@@ -205,6 +205,11 @@ function renderDashboard() {
     const main = document.getElementById('main');
     clearElement(main);;
 
+    const CreateThreadButton = document.createElement('button');
+    CreateThreadButton.textContent = 'Create Thread';
+    CreateThreadButton.onclick = showCreateThreadScreen;
+    main.appendChild(CreateThreadButton);
+
     const logoutButton = document.createElement('button');
     logoutButton.textContent = 'Logout';
     logoutButton.onclick = handleLogout;
@@ -217,4 +222,36 @@ function handleLogout() {
 }
 
 // ------------ 2.2.1. Making a thread ------------ 
+function showCreateThreadScreen() {
+    const main = document.getElementById('main');
+    clearElement(main);
+
+    const form = document.createElement('form');
+    form.id = 'createThreadForm';
+    form.addEventListener('submit', handleCreateThreadSubmission);
+
+    form.appendChild(create_div('Thread Title', 'text', 'threadTitle'));
+    form.appendChild(create_div('Content', 'text', 'threadContent'));
+    form.appendChild(createCheckbox('threadPrivate', 'Make Private'));
+
+    const submitButton = document.createElement('button');
+    submitButton.type = 'submit';
+    submitButton.textContent = 'Submit';
+    form.appendChild(submitButton);
+
+    main.appendChild(form);
+}
+
+function createCheckbox(id, labelContent) {
+
+    const div = document.createElement("div");
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = id;
+    div.appendChild(checkbox);
+    div.appendChild(label);
+    div.appendChild(document.createTextNode(labelContent));
+    return div;
+}
 
