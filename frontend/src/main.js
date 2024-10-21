@@ -2,7 +2,7 @@ import { BACKEND_PORT } from './config.js';
 // A helper you may want to use when uploading new images to the server.
 import { fileToDataUrl } from './helpers.js';
 
-const create_div = (labelText, type, id) => {
+function create_div(labelText, type, id) {
     const div = document.createElement("div");
     const label = document.createElement("label");
     const input = document.createElement("input");
@@ -17,7 +17,7 @@ const create_div = (labelText, type, id) => {
     return div;
 }
 
-const get_button = (words, callback) => {
+function get_button(words, callback) {
     const button = document.createElement("button");
     button.type = "button";
     button.innerText = words;
@@ -26,10 +26,15 @@ const get_button = (words, callback) => {
     return button;
 };
 
-const btn1 = () => {
+function btn1() {
     console.log("Login button!")
 }
 
+function clearElement(element) {
+    while (element.firstChild) {
+        element.removeChild(element.firstChild);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', init);
 
@@ -43,7 +48,7 @@ function init() {
 
 function renderLoginForm() {
     const main = document.getElementById('main');
-    main.innerHTML = '';
+    clearElement(main);;
 
     const form = document.createElement("form");
     form.id = "loginForm";
@@ -95,7 +100,7 @@ function handleLogin(event) {
 
 function renderRegistrationForm() {
     const main = document.getElementById('main');
-    main.innerHTML = '';
+    clearElement(main);
 
     const form = document.createElement('form');
     form.id = 'registrationForm';
@@ -198,7 +203,7 @@ function showError(message) {
 // ------------ 2.1.4. Dashboard ------------ 
 function renderDashboard() {
     const main = document.getElementById('main');
-    main.innerHTML = '';
+    clearElement(main);;
 
     const logoutButton = document.createElement('button');
     logoutButton.textContent = 'Logout';
