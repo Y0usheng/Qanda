@@ -34,7 +34,11 @@ const btn1 = () => {
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
-    renderLoginForm();
+    if (localStorage.getItem('authToken')) {
+        renderDashboard();
+    } else {
+        renderLoginForm();
+    }
 }
 
 function renderLoginForm() {
@@ -70,35 +74,23 @@ function handleLogin(event) {
         body: JSON.stringify({ email, password })
     })
         .then(response => {
-            if (!response.ok) throw new Error('Failed to login');
+            if (!response.ok) throw new Error(`Login error: HTTP error! status: ${response.status}`);;
             return response.json();
         })
         .then(data => {
-            console.log('Login successful', data);
+            if (!data) {
+                showError(data.error);
+            } else {
+                console.log('Login successful', data);
+                localStorage.setItem('authToken', data.token);
+                alert('Login successful!');
+                renderDashboard();
+            }
         })
         .catch(error => {
             console.error('Login failed', error);
             showError('Invalid email or password.');
         });
-}
-
-function showError(message) {
-    let errorDiv = document.getElementById('errorDiv');
-    if (!errorDiv) {
-        errorDiv = document.createElement('div');
-        errorDiv.id = 'errorDiv';
-        errorDiv.style.color = 'red';
-        const main = document.getElementById('main');
-        main.appendChild(errorDiv);
-    }
-
-    errorDiv.textContent = message;
-    clearTimeout(errorDiv.timeout);
-    errorDiv.timeout = setTimeout(() => {
-        if (errorDiv.parentNode) {
-            errorDiv.parentNode.removeChild(errorDiv);
-        }
-    }, 5000);
 }
 
 function renderRegistrationForm() {
@@ -144,16 +136,80 @@ function handleRegistration(event) {
         body: JSON.stringify({ email, name, password })
     })
         .then(response => {
-            if (!response.ok) throw new Error('Registration failed');
+            if (!response.ok) throw new Error(`Registration error: HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
             console.log('Registration successful', data);
-            renderLoginForm();
+            alert('Registration successful!');
+            localStorage.setItem('authToken', data.token);
+            renderDashboard();
         })
         .catch(error => {
             console.error('Registration error', error);
-            showError(error.message);
+            showError('Registration error: ' + error.message);
         });
 }
+
+// ------------ 2.1.3. Error Popup ------------ 
+function showError(message) {
+    let errorPopup = document.getElementById('errorPopup');
+    if (!errorPopup) {
+        errorPopup = document.createElement('div');
+        errorPopup.id = 'errorPopup';
+        errorPopup.style.position = 'fixed';
+        errorPopup.style.left = '50%';
+        errorPopup.style.top = '50%';
+        errorPopup.style.transform = 'translate(-50%, -50%)';
+        errorPopup.style.backgroundColor = 'white';
+        errorPopup.style.border = '1px solid red';
+        errorPopup.style.padding = '20px';
+        errorPopup.style.zIndex = '1000';
+        errorPopup.style.borderRadius = '10px';
+        errorPopup.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+
+        const messageDiv = document.createElement('div');
+        messageDiv.id = 'errorMessage';
+        errorPopup.appendChild(messageDiv);
+
+        const closeButton = document.createElement('button');
+        closeButton.textContent = 'X';
+        closeButton.style.position = 'absolute';
+        closeButton.style.top = '5px';
+        closeButton.style.right = '10px';
+        closeButton.style.border = 'none';
+        closeButton.style.background = 'none';
+        closeButton.style.cursor = 'pointer';
+        closeButton.style.fontSize = '16px';
+        closeButton.style.fontWeight = 'bold';
+        closeButton.onclick = function () {
+            errorPopup.style.display = 'none';
+        };
+        errorPopup.appendChild(closeButton);
+
+        document.body.appendChild(errorPopup);
+    }
+
+    document.getElementById('errorMessage').textContent = message;
+    errorPopup.style.display = 'block';
+}
+
+
+// ------------ 2.1.4. Dashboard ------------ 
+function renderDashboard() {
+    const main = document.getElementById('main');
+    main.innerHTML = '';
+
+    const logoutButton = document.createElement('button');
+    logoutButton.textContent = 'Logout';
+    logoutButton.onclick = handleLogout;
+    main.appendChild(logoutButton);
+}
+
+function handleLogout() {
+    localStorage.removeItem('authToken');
+    renderLoginForm();
+}
+
+// ------------ 2.2.1. Making a thread ------------ 
 
