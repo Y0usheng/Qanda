@@ -26,7 +26,7 @@ function get_button(words, callback) {
     return button;
 };
 
-function createCheckbox(id, labelContent) {
+function create_checkbox(id, labelContent) {
     const div = document.createElement("div");
     const label = document.createElement('label');
     const checkbox = document.createElement('input');
@@ -43,7 +43,7 @@ function btn1() {
     console.log("Login button!")
 }
 
-function clearElement(element) {
+function clear_element(element) {
     while (element.firstChild) {
         element.removeChild(element.firstChild);
     }
@@ -52,9 +52,9 @@ function clearElement(element) {
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
-    createSidebar();
     if (localStorage.getItem('authToken')) {
         renderDashboard();
+        createSidebar();
     } else {
         renderLoginForm();
     }
@@ -62,7 +62,7 @@ function init() {
 
 function renderLoginForm() {
     const main = document.getElementById('main');
-    clearElement(main);
+    clear_element(main);
 
     const form = document.createElement("form");
     form.id = "loginForm";
@@ -89,7 +89,7 @@ function handleLogin(event) {
     const password = document.getElementById('loginPassword').value;
     fetch(`http://localhost:${BACKEND_PORT}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({ email, password })
     })
         .then(response => {
@@ -102,6 +102,7 @@ function handleLogin(event) {
             } else {
                 console.log('Login successful', data);
                 localStorage.setItem('authToken', data.token);
+                console.log('Retrieved token:', 'authToken');
                 alert('Login successful!');
                 renderDashboard();
             }
@@ -114,7 +115,7 @@ function handleLogin(event) {
 
 function renderRegistrationForm() {
     const main = document.getElementById('main');
-    clearElement(main);
+    clear_element(main);
 
     const form = document.createElement('form');
     form.id = 'registrationForm';
@@ -151,7 +152,7 @@ function handleRegistration(event) {
 
     fetch(`http://localhost:${BACKEND_PORT}/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({ email, name, password })
     })
         .then(response => {
@@ -217,7 +218,7 @@ function showError(message) {
 // ------------ 2.1.4. Dashboard ------------ 
 function renderDashboard() {
     const main = document.getElementById('main');
-    clearElement(main);;
+    clear_element(main);;
 
     const CreateThreadButton = document.createElement('button');
     CreateThreadButton.textContent = 'Create Thread';
@@ -238,7 +239,7 @@ function handleLogout() {
 // ------------ 2.2.1. Making a thread ------------ 
 function showCreateThreadScreen() {
     const main = document.getElementById('main');
-    clearElement(main);
+    clear_element(main);
 
     const form = document.createElement('form');
     form.id = 'createThreadForm';
@@ -246,7 +247,7 @@ function showCreateThreadScreen() {
 
     form.appendChild(create_div('Thread Title', 'text', 'threadTitle'));
     form.appendChild(create_div('Content', 'text', 'threadContent'));
-    form.appendChild(createCheckbox('threadPublic', 'Make Public'));
+    form.appendChild(create_checkbox('threadPublic', 'Make Public'));
 
     const submitButton = document.createElement('button');
     submitButton.type = 'submit';
@@ -263,11 +264,12 @@ function handleCreateThreadSubmission(event) {
     const isPublic = document.getElementById('threadPublic').checked;
 
     const token = localStorage.getItem('authToken');
+    console.log('Retrieved token:', token);
 
     fetch(`http://localhost:${BACKEND_PORT}/thread`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json; charset=UTF-8',
             Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ title, isPublic, content })
@@ -294,31 +296,17 @@ function handleCreateThreadSubmission(event) {
 
 // ------------ 2.2.2. Getting a List of Threads ------------ 
 function createSidebar() {
-    const main = document.getElementById('main');  // Assuming there's a 'main' container
-    const sidebar = document.createElement('div');
-    sidebar.id = 'sidebar';
-    sidebar.style.width = '400px';
-    sidebar.style.maxWidth = '400px';
-    sidebar.style.height = '100vh'; // Adjust according to your layout
-    sidebar.style.overflowY = 'auto';
-    sidebar.style.position = 'fixed'; // Making it scroll independently of the main content
-    sidebar.style.left = '0'; // Position it on the left
-    sidebar.style.top = '0'; // Start at the top of the container
-    sidebar.style.borderRight = '1px solid #ccc'; // Aesthetic border
-
-    main.prepend(sidebar); // Prepend to ensure it appears at the start of the main container
-
-    // Optionally load threads or any initial content into the sidebar
     loadThreads();
 }
 
 function loadThreads(StartIndex = 0) {
-    const sidebar = document.getElementById('sidebar'); // Ensure this exists in your HTML or create it similarly
+    const main = document.getElementById('main');
     const token = localStorage.getItem('authToken');
+    console.log('Retrieved token:', token);
     fetch(`http://localhost:${BACKEND_PORT}/threads?start=${StartIndex}`, {
         method: 'GET',
         headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json; charset=UTF-8',
             Authorization: `Bearer ${token}`,
         },
     })
@@ -326,17 +314,59 @@ function loadThreads(StartIndex = 0) {
         .then(data => {
             data.forEach(thread => {
                 const threadElement = createThreadElement(thread);
-                sidebar.appendChild(threadElement);
+                main.appendChild(threadElement);
             });
-            if (data.length === 5) { // Assuming the API returns 5 threads at a time
+            if (data.length === 5) {
                 const moreButton = document.createElement('button');
                 moreButton.textContent = 'More';
                 moreButton.onclick = () => {
                     loadThreads(StartIndex + 5);
-                    sidebar.removeChild(moreButton);
+                    main.removeChild(moreButton);
                 };
-                sidebar.appendChild(moreButton);
+                main.appendChild(moreButton);
             }
         });
 }
+
+function getThreadDetail(threadId) {
+    const token = localStorage.getItem('authToken');
+
+    return fetch(`http://localhost:${BACKEND_PORT}/thread?id=${threadId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch thread details: HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .catch(error => {
+            console.error('Failed to fetch thread details:', error);
+            throw error;
+        });
+}
+
+
+function createThreadElement(thread) {
+    const threadDiv = document.createElement('div');
+    threadDiv.className = 'thread-box';
+    threadDiv.style.maxHeight = '100px';
+
+    getThreadDetail(thread)
+        .then(fullThread => {
+            console.log(fullThread)
+            threadDiv.textContent = `Title: ${fullThread.title}, Body content: ${fullThread.content}, Number of likes: ${fullThread.likes.length}`;
+        })
+        .catch(error => {
+            console.error('Error fetching thread details:', error);
+            threadDiv.textContent = 'Failed to load thread details';
+        });
+    return threadDiv;
+}
+
+
 
