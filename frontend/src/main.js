@@ -26,6 +26,19 @@ function get_button(words, callback) {
     return button;
 };
 
+function createCheckbox(id, labelContent) {
+    const div = document.createElement("div");
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = id;
+    label.htmlFor = id;
+    label.appendChild(document.createTextNode(labelContent));
+    label.insertBefore(checkbox, label.firstChild);
+    div.appendChild(label);
+    return div;
+}
+
 function btn1() {
     console.log("Login button!")
 }
@@ -39,6 +52,7 @@ function clearElement(element) {
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
+    createSidebar();
     if (localStorage.getItem('authToken')) {
         renderDashboard();
     } else {
@@ -48,7 +62,7 @@ function init() {
 
 function renderLoginForm() {
     const main = document.getElementById('main');
-    clearElement(main);;
+    clearElement(main);
 
     const form = document.createElement("form");
     form.id = "loginForm";
@@ -232,7 +246,7 @@ function showCreateThreadScreen() {
 
     form.appendChild(create_div('Thread Title', 'text', 'threadTitle'));
     form.appendChild(create_div('Content', 'text', 'threadContent'));
-    form.appendChild(createCheckbox('threadPrivate', 'Make Private'));
+    form.appendChild(createCheckbox('threadPublic', 'Make Public'));
 
     const submitButton = document.createElement('button');
     submitButton.type = 'submit';
@@ -242,16 +256,87 @@ function showCreateThreadScreen() {
     main.appendChild(form);
 }
 
-function createCheckbox(id, labelContent) {
+function handleCreateThreadSubmission(event) {
+    event.preventDefault();
+    const title = document.getElementById('threadTitle').value;
+    const content = document.getElementById('threadContent').value;
+    const isPublic = document.getElementById('threadPublic').checked;
 
-    const div = document.createElement("div");
-    const label = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = id;
-    div.appendChild(checkbox);
-    div.appendChild(label);
-    div.appendChild(document.createTextNode(labelContent));
-    return div;
+    const token = localStorage.getItem('authToken');
+
+    fetch(`http://localhost:${BACKEND_PORT}/thread`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ title, isPublic, content })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Thread creation error: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            if (data) {
+                console.log('Thread created successfully', data);
+                alert('Thread created successfully!');
+                renderThreadScreen(data.threadId);
+            } else {
+                throw new Error('Invalid thread data received');
+            }
+        })
+        .catch(error => {
+            console.error('Thread creation error', error);
+            showError('Thread creation error: ' + error.message);
+        });
+}
+
+
+// ------------ 2.2.2. Getting a List of Threads ------------ 
+function createSidebar() {
+    const main = document.getElementById('main');  // Assuming there's a 'main' container
+    const sidebar = document.createElement('div');
+    sidebar.id = 'sidebar';
+    sidebar.style.width = '400px';
+    sidebar.style.maxWidth = '400px';
+    sidebar.style.height = '100vh'; // Adjust according to your layout
+    sidebar.style.overflowY = 'auto';
+    sidebar.style.position = 'fixed'; // Making it scroll independently of the main content
+    sidebar.style.left = '0'; // Position it on the left
+    sidebar.style.top = '0'; // Start at the top of the container
+    sidebar.style.borderRight = '1px solid #ccc'; // Aesthetic border
+
+    main.prepend(sidebar); // Prepend to ensure it appears at the start of the main container
+
+    // Optionally load threads or any initial content into the sidebar
+    loadThreads();
+}
+
+function loadThreads(StartIndex = 0) {
+    const sidebar = document.getElementById('sidebar'); // Ensure this exists in your HTML or create it similarly
+    const token = localStorage.getItem('authToken');
+    fetch(`http://localhost:${BACKEND_PORT}/threads?start=${StartIndex}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+    })
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(thread => {
+                const threadElement = createThreadElement(thread);
+                sidebar.appendChild(threadElement);
+            });
+            if (data.length === 5) { // Assuming the API returns 5 threads at a time
+                const moreButton = document.createElement('button');
+                moreButton.textContent = 'More';
+                moreButton.onclick = () => {
+                    loadThreads(StartIndex + 5);
+                    sidebar.removeChild(moreButton);
+                };
+                sidebar.appendChild(moreButton);
+            }
+        });
 }
 
