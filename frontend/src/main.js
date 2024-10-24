@@ -54,7 +54,6 @@ document.addEventListener('DOMContentLoaded', init);
 function init() {
     if (localStorage.getItem('authToken')) {
         render_dashboard();
-        load_threads();
     } else {
         render_login_form();
     }
@@ -98,7 +97,7 @@ function handle_login(event) {
         })
         .then(data => {
             if (!data) {
-                ereoe_popup_window(data.error);
+                error_popup_window(data.error);
             } else {
                 console.log('Login successful', data);
                 localStorage.setItem('authToken', data.token);
@@ -109,7 +108,7 @@ function handle_login(event) {
         })
         .catch(error => {
             console.error('Login failed', error);
-            ereoe_popup_window('Invalid email or password.');
+            error_popup_window('Invalid email or password.');
         });
 }
 
@@ -146,7 +145,7 @@ function handle_register(event) {
     const confirmPassword = document.getElementById('confirmPassword').value;
 
     if (password !== confirmPassword) {
-        ereoe_popup_window('Passwords do not match.');
+        error_popup_window('Passwords do not match.');
         return;
     }
 
@@ -167,12 +166,12 @@ function handle_register(event) {
         })
         .catch(error => {
             console.error('Registration error', error);
-            ereoe_popup_window('Registration error: ' + error.message);
+            error_popup_window('Registration error: ' + error.message);
         });
 }
 
 // ------------ 2.1.3. Error Popup ------------ 
-function ereoe_popup_window(message) {
+function error_popup_window(message) {
     let errorPopup = document.getElementById('errorPopup');
     if (!errorPopup) {
         errorPopup = document.createElement('div');
@@ -229,6 +228,8 @@ function render_dashboard() {
     logoutButton.textContent = 'Logout';
     logoutButton.onclick = handle_logout;
     main.appendChild(logoutButton);
+
+    load_threads();
 }
 
 function handle_logout() {
@@ -254,6 +255,11 @@ function create_thread() {
     submitButton.textContent = 'Submit';
     form.appendChild(submitButton);
 
+    const create_thread_back = document.createElement('button');
+    create_thread_back.textContent = 'Back';
+    create_thread_back.onclick = render_dashboard;
+
+    form.appendChild(create_thread_back);
     main.appendChild(form);
 }
 
@@ -289,7 +295,7 @@ function handle_thread_submission(event) {
         })
         .catch(error => {
             console.error('Thread creation error', error);
-            ereoe_popup_window('Thread creation error: ' + error.message);
+            error_popup_window('Thread creation error: ' + error.message);
         });
 }
 
@@ -351,11 +357,15 @@ function create_thread_div(thread) {
     const threadDiv = document.createElement('div');
     threadDiv.className = 'thread-box';
     threadDiv.style.maxHeight = '100px';
+    threadDiv.style.cursor = 'pointer';
 
     get_thread_details(thread)
         .then(fullThread => {
             console.log(fullThread)
             threadDiv.textContent = `Title: ${fullThread.title}, Body content: ${fullThread.content}, Number of likes: ${fullThread.likes.length}`;
+            threadDiv.addEventListener('click', () => {
+                render_single_thread(fullThread);
+            });
         })
         .catch(error => {
             console.error('Error fetching thread details:', error);
@@ -365,24 +375,31 @@ function create_thread_div(thread) {
 }
 
 // ------------ 2.2.3. Individual Thread Screen ------------ 
-function renderThreadScreen(threadId) {
+function render_single_thread(thread) {
     const main = document.getElementById('main');
     clear_element(main);
 
-    fetch(`http://localhost:${BACKEND_PORT}/threads/${threadId}`)
-        .then(response => response.json())
-        .then(thread => {
-            const title = document.createElement('h1');
-            title.textContent = thread.title;
-            main.appendChild(title);
+    const thread_sigle_detail = document.createElement('div');
+    thread_sigle_detail.className = 'single-thread-detail';
 
-            const content = document.createElement('p');
-            content.textContent = thread.content;
-            main.appendChild(content);
+    const titleElement = document.createElement('h2');
+    titleElement.textContent = `Title: ${thread.title}`;
 
-            const likes = document.createElement('p');
-            likes.textContent = `Likes: ${thread.likes}`;
-            main.appendChild(likes);
-        });
+    const contentElement = document.createElement('p');
+    contentElement.textContent = `Body content: ${thread.content}`;
+
+    const likesElement = document.createElement('p');
+    likesElement.textContent = `Number of likes: ${thread.likes.length}`;
+
+    thread_sigle_detail.appendChild(titleElement);
+    thread_sigle_detail.appendChild(contentElement);
+    thread_sigle_detail.appendChild(likesElement);
+
+    const single_thread_back = document.createElement('button');
+    single_thread_back.textContent = 'Back';
+    single_thread_back.onclick = render_dashboard;
+
+    main.appendChild(thread_sigle_detail);
+    main.appendChild(single_thread_back);
 }
 
