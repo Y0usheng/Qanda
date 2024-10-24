@@ -286,12 +286,15 @@ function handle_thread_submission(event) {
         })
         .then(data => {
             if (data) {
-                console.log('Thread created successfully', data);
+                console.log('Thread created successfully', data, data.id);
                 alert('Thread created successfully!');
-                renderThreadScreen(data.threadId);
+                return get_thread_details(data.id);
             } else {
                 throw new Error('Invalid thread data received');
             }
+        })
+        .then(fullThread => {
+            render_single_thread(fullThread);
         })
         .catch(error => {
             console.error('Thread creation error', error);
@@ -362,6 +365,7 @@ function create_thread_div(thread) {
     get_thread_details(thread)
         .then(fullThread => {
             console.log(fullThread)
+            console.log(fullThread.id)
             threadDiv.textContent = `Title: ${fullThread.title}, Body content: ${fullThread.content}, Number of likes: ${fullThread.likes.length}`;
             threadDiv.addEventListener('click', () => {
                 render_single_thread(fullThread);
