@@ -725,3 +725,103 @@ function create_comment_element(threadId, comment, indentLevel = 0) {
 
     return commentDiv;
 }
+
+function get_time_since_comment(timestamp) {
+    const now = new Date();
+    const commentTime = new Date(timestamp);
+    const diffInSeconds = Math.floor((now - commentTime) / 1000);
+
+    if (diffInSeconds < 60) {
+        return 'Just now';
+    } else if (diffInSeconds < 3600) {
+        const minutes = Math.floor(diffInSeconds / 60);
+        return `${minutes} minute(s) ago`;
+    } else if (diffInSeconds < 86400) {
+        const hours = Math.floor(diffInSeconds / 3600);
+        return `${hours} hour(s) ago`;
+    } else if (diffInSeconds < 604800) {
+        const days = Math.floor(diffInSeconds / 86400);
+        return `${days} day(s) ago`;
+    } else {
+        const weeks = Math.floor(diffInSeconds / 604800);
+        return `${weeks} week(s) ago`;
+    }
+}
+
+// ------------ 2.4.2. Making a comment ------------ 
+function render_comment_input(container, threadId, parentCommentId) {
+    const commentInputDiv = document.createElement('div');
+    commentInputDiv.className = 'comment-input-div';
+
+    const commentTextarea = document.createElement('textarea');
+    commentTextarea.placeholder = 'Write your comment here...';
+    commentTextarea.className = 'comment-textarea';
+    commentInputDiv.appendChild(commentTextarea);
+
+    const commentButton = document.createElement('button');
+    commentButton.textContent = 'Comment';
+    commentButton.onclick = () => handle_comment_submission(commentTextarea.value, threadId, parentCommentId);
+    commentInputDiv.appendChild(commentButton);
+
+    container.appendChild(commentInputDiv);
+}
+
+function handle_comment_submission(commentText, threadId, parentCommentId) {
+    if (!commentText.trim()) {
+        alert('Comment cannot be empty');
+        return;
+    }
+
+    console.log(commentText, threadId, parentCommentId)
+
+    const token = localStorage.getItem('authToken');
+    fetch(`http://localhost:${BACKEND_PORT}/comment`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ "content": commentText, "threadId": threadId, "parentCommentId": parentCommentId })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to post comment: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(() => {
+            console.log('Comment posted successfully');
+            return get_thread_details(threadId);
+        })
+        .then(updatedThread => {
+            render_single_thread(updatedThread);
+        })
+        .catch(error => {
+            console.error('Failed to post comment', error);
+            error_popup_window('Failed to post comment: ' + error.message);
+        });
+}
+
+function render_reply_modal(commentDiv, threadId, parentCommentId, indentLevel) {
+    const modal = document.createElement('div');
+    modal.className = 'reply-modal';
+    modal.style.marginLeft = `${Math.min(indentLevel, 1) * 20}px`;
+
+    const commentTextarea = document.createElement('textarea');
+    commentTextarea.placeholder = 'Write your reply here...';
+    commentTextarea.className = 'comment-textarea';
+    modal.appendChild(commentTextarea);
+
+    const commentButton = document.createElement('button');
+    commentButton.textContent = 'Comment';
+    commentButton.onclick = () => {
+        handle_comment_submission(commentTextarea.value, threadId, parentCommentId);
+        commentDiv.removeChild(modal);
+    };
+    modal.appendChild(commentButton);
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.onclick = () => commentDiv.removeChild(modal);
+    modal.appendChild(closeButton);
+
+    commentDiv.appendChild(modal);
+}
