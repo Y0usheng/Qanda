@@ -403,9 +403,6 @@ function render_single_thread(thread) {
     const check_user_is_creator = localStorage.getItem('userId') === thread.creatorId.toString();
     const check_user_is_admin = localStorage.getItem('userRole') === 'admin';
 
-    console.log(check_user_is_creator, localStorage.getItem('userId'), thread.creatorId);
-    console.log(check_user_is_admin, localStorage.getItem('userRole'));
-
     if (check_user_is_creator || check_user_is_admin) {
         const editButton = document.createElement('button');
         editButton.textContent = 'Edit';
@@ -447,6 +444,8 @@ function render_single_thread(thread) {
 
     main.appendChild(thread_single_detail);
     main.appendChild(single_thread_back);
+
+    load_comments(thread.id);
 }
 
 // ------------ 2.3.1. Editing a thread ------------ 
@@ -646,4 +645,83 @@ function handle_thread_watch(threadId, isWatch) {
             console.error('Thread watch/unwatch error', error);
             error_popup_window('Thread watch/unwatch error: ' + error.message);
         });
+}
+
+// ------------ 2.4.1. Showing comments ------------ 
+function load_comments(threadId) {
+    const token = localStorage.getItem('authToken');
+    fetch(`http://localhost:${BACKEND_PORT}/comments?threadId=${threadId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to load comments: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(comments => {
+            comments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            const commentsContainer = document.createElement('div');
+            commentsContainer.className = 'comments-container';
+
+            comments.filter(comment => comment.parentCommentId === null).forEach(comment => {
+                const commentElement = create_comment_element(threadId, comment, 0);
+                commentsContainer.appendChild(commentElement);
+                comments.filter(comment => comment.parentCommentId !== null).forEach(cmt => {
+                    if (cmt.parentCommentId === comment.id) {
+                        const commentElement = create_comment_element(threadId, cmt, 1);
+                        commentsContainer.appendChild(commentElement);
+                    }
+                });
+            });
+
+            const main = document.getElementById('main');
+            main.appendChild(commentsContainer);
+
+            get_thread_details(threadId)
+                .then(thread => {
+                    console.log(thread);
+                    console.log(thread.lock);
+                    if (!thread.lock) {
+                        if (comments.length === 0) {
+                            render_comment_input(main, threadId, null);
+                        } else {
+                            render_comment_input(commentsContainer, threadId, null);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Failed to get thread details', error);
+                });
+        })
+        .catch(error => {
+            console.error('Failed to load comments', error);
+            error_popup_window('Failed to load comments: ' + error.message);
+        });
+
+}
+
+function create_comment_element(threadId, comment, indentLevel = 0) {
+    const commentDiv = document.createElement('div');
+    commentDiv.className = 'comment';
+    commentDiv.style.marginLeft = `${indentLevel * 20}px`;
+
+    const commentText = document.createElement('p');
+    commentText.textContent = comment.content;
+    commentDiv.appendChild(commentText);
+
+    const timeSinceComment = document.createElement('span');
+    timeSinceComment.className = 'time-since-comment';
+    timeSinceComment.textContent = get_time_since_comment(comment.createdAt);
+    commentDiv.appendChild(timeSinceComment);
+
+    const replyButton = document.createElement('button');
+    replyButton.textContent = 'Reply';
+    replyButton.onclick = () => render_reply_modal(commentDiv, threadId, comment.id, indentLevel + 1);
+    commentDiv.appendChild(replyButton);
+
+    return commentDiv;
 }
