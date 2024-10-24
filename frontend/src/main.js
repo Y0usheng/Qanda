@@ -411,6 +411,11 @@ function render_single_thread(thread) {
         editButton.textContent = 'Edit';
         editButton.onclick = () => render_edit_thread_screen(thread);
         thread_single_detail.appendChild(editButton);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.onclick = () => handle_thread_delete(thread.id);
+        thread_single_detail.appendChild(deleteButton);
     }
 
     const single_thread_back = document.createElement('button');
@@ -501,3 +506,63 @@ function handle_thread_edit(event, threadId) {
         });
 }
 
+
+// ------------ 2.3.2. Deleting a thread ------------ 
+function handle_thread_delete(threadId) {
+    const token = localStorage.getItem('authToken');
+
+    if (!confirm('Are you sure you want to delete this thread?')) {
+        return;
+    }
+
+    fetch(`http://localhost:${BACKEND_PORT}/thread`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: threadId }),
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Thread delete error: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(() => {
+            console.log('Thread deleted successfully');
+            alert('Thread deleted successfully!');
+            redirect_to_latest_thread();
+        })
+        .catch(error => {
+            console.error('Thread delete error', error);
+            error_popup_window('Thread delete error: ' + error.message);
+        });
+}
+
+function redirect_to_latest_thread() {
+    const token = localStorage.getItem('authToken');
+
+    fetch(`http://localhost:${BACKEND_PORT}/threads?start=0`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+    })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Data received from server:', data, 'Show me 0', data[0]);
+            if (Array.isArray(data) && data.length > 0) {
+                return get_thread_details(data[0]);
+            } else {
+                alert('No threads available.');
+                render_dashboard();
+            }
+        })
+        .then(fullThread => {
+            render_single_thread(fullThread);
+        })
+        .catch(error => {
+            console.error('Failed to load threads', error);
+            error_popup_window('Failed to load threads: ' + error.message);
+        });
+}
