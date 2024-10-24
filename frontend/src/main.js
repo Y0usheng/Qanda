@@ -430,6 +430,17 @@ function render_single_thread(thread) {
     likeButton.onclick = () => handle_thread_like(thread.id, !userHasLiked);
     thread_single_detail.appendChild(likeButton);
 
+    const watchButton = document.createElement('button');
+    watchButton.id = 'watchButton';
+    if (thread.watchees.includes(parseInt(localStorage.getItem('userId')))) {
+        watchButton.textContent = 'Unwatch';
+    } else {
+        watchButton.textContent = 'Watch';
+    }
+    const userIsWatching = thread.watchees.includes(parseInt(localStorage.getItem('userId')));
+    watchButton.onclick = () => handle_thread_watch(thread.id, !userIsWatching);
+    thread_single_detail.appendChild(watchButton);
+
     const single_thread_back = document.createElement('button');
     single_thread_back.textContent = 'Back';
     single_thread_back.onclick = render_dashboard;
@@ -606,5 +617,33 @@ function handle_thread_like(threadId, isLike) {
         .catch(error => {
             console.error('Thread like/unlike error', error);
             error_popup_window('Thread like/unlike error: ' + error.message);
+        });
+}
+
+// ------------ 2.3.4. Watching a thread ------------ 
+function handle_thread_watch(threadId, isWatch) {
+    const token = localStorage.getItem('authToken');
+    fetch(`http://localhost:${BACKEND_PORT}/thread/watch`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ "id": threadId, "turnon": isWatch }),
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Thread ${isWatch ? 'watch' : 'unwatch'} error: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(() => {
+            console.log('Thread updated successfully after watch/unwatch');
+            return get_thread_details(threadId);
+        })
+        .then(updatedThread => {
+            render_single_thread(updatedThread);
+        })
+        .catch(error => {
+            console.error('Thread watch/unwatch error', error);
+            error_popup_window('Thread watch/unwatch error: ' + error.message);
         });
 }
