@@ -418,6 +418,18 @@ function render_single_thread(thread) {
         thread_single_detail.appendChild(deleteButton);
     }
 
+    const likeButton = document.createElement('button');
+    likeButton.id = 'likeButton';
+    likeButton.disabled = thread.lock;
+    if (thread.likes.includes(parseInt(localStorage.getItem('userId')))) {
+        likeButton.textContent = 'Unlike';
+    } else {
+        likeButton.textContent = 'Like';
+    }
+    const userHasLiked = thread.likes.includes(parseInt(localStorage.getItem('userId')));
+    likeButton.onclick = () => handle_thread_like(thread.id, !userHasLiked);
+    thread_single_detail.appendChild(likeButton);
+
     const single_thread_back = document.createElement('button');
     single_thread_back.textContent = 'Back';
     single_thread_back.onclick = render_dashboard;
@@ -564,5 +576,35 @@ function redirect_to_latest_thread() {
         .catch(error => {
             console.error('Failed to load threads', error);
             error_popup_window('Failed to load threads: ' + error.message);
+        });
+}
+
+// ------------ 2.3.3. Liking a thread ------------ 
+function handle_thread_like(threadId, isLike) {
+    const token = localStorage.getItem('authToken');
+    console.log(threadId, isLike)
+    fetch(`http://localhost:${BACKEND_PORT}/thread/like`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ "id": threadId, "turnon": isLike }),
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Thread ${isLike ? 'like' : 'unlike'} error: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(() => {
+            console.log('Thread updated successfully after like/unlike');
+            return get_thread_details(threadId);
+        })
+        .then(updatedThread => {
+            console.log('updatedThread', updatedThread)
+            render_single_thread(updatedThread);
+        })
+        .catch(error => {
+            console.error('Thread like/unlike error', error);
+            error_popup_window('Thread like/unlike error: ' + error.message);
         });
 }
