@@ -471,7 +471,7 @@ function handle_thread_edit(event, threadId) {
     const title = document.getElementById('editThreadTitle').value;
     const content = document.getElementById('editThreadContent').value;
     const isPublic = document.getElementById('editThreadPublic').checked;
-    const isLocked = document.getElementById('editThreadLocked').checked;
+    const lock = document.getElementById('editThreadLocked').checked;
 
     const token = localStorage.getItem('authToken');
 
@@ -481,7 +481,7 @@ function handle_thread_edit(event, threadId) {
             'Content-Type': 'application/json; charset=UTF-8',
             Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ id: threadId, title, content, isPublic, isLocked }),
+        body: JSON.stringify({ id: threadId, title, content, isPublic, lock }),
     })
         .then(response => {
             if (!response.ok) throw new Error(`Thread update error: HTTP error! status: ${response.status}`);
@@ -490,7 +490,10 @@ function handle_thread_edit(event, threadId) {
         .then(updatedThread => {
             console.log('Thread updated successfully', updatedThread);
             alert('Thread updated successfully!');
-            render_single_thread(updatedThread);
+            return get_thread_details(threadId);
+        })
+        .then(fullThread => {
+            render_single_thread(fullThread);
         })
         .catch(error => {
             console.error('Thread update error', error);
