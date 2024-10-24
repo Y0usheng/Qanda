@@ -101,7 +101,8 @@ function handle_login(event) {
             } else {
                 console.log('Login successful', data);
                 localStorage.setItem('authToken', data.token);
-                console.log('Retrieved token:', 'authToken');
+                localStorage.setItem('userId', data.userId);
+                localStorage.setItem('userRole', data.admin ? 'admin' : 'user');
                 alert('Login successful!');
                 render_dashboard();
             }
@@ -162,6 +163,8 @@ function handle_register(event) {
             console.log('Registration successful', data);
             alert('Registration successful!');
             localStorage.setItem('authToken', data.token);
+            localStorage.setItem('userId', data.userId);
+            localStorage.setItem('userRole', data.admin ? 'admin' : 'user');
             render_dashboard();
         })
         .catch(error => {
@@ -364,8 +367,6 @@ function create_thread_div(thread) {
 
     get_thread_details(thread)
         .then(fullThread => {
-            console.log(fullThread)
-            console.log(fullThread.id)
             threadDiv.textContent = `Title: ${fullThread.title}, Body content: ${fullThread.content}, Number of likes: ${fullThread.likes.length}`;
             threadDiv.addEventListener('click', () => {
                 render_single_thread(fullThread);
@@ -383,8 +384,8 @@ function render_single_thread(thread) {
     const main = document.getElementById('main');
     clear_element(main);
 
-    const thread_sigle_detail = document.createElement('div');
-    thread_sigle_detail.className = 'single-thread-detail';
+    const thread_single_detail = document.createElement('div');
+    thread_single_detail.className = 'single-thread-detail';
 
     const titleElement = document.createElement('h2');
     titleElement.textContent = `Title: ${thread.title}`;
@@ -395,15 +396,105 @@ function render_single_thread(thread) {
     const likesElement = document.createElement('p');
     likesElement.textContent = `Number of likes: ${thread.likes.length}`;
 
-    thread_sigle_detail.appendChild(titleElement);
-    thread_sigle_detail.appendChild(contentElement);
-    thread_sigle_detail.appendChild(likesElement);
+    thread_single_detail.appendChild(titleElement);
+    thread_single_detail.appendChild(contentElement);
+    thread_single_detail.appendChild(likesElement);
+
+    const check_user_is_creator = localStorage.getItem('userId') === thread.creatorId.toString();
+    const check_user_is_admin = localStorage.getItem('userRole') === 'admin';
+
+    console.log(check_user_is_creator, localStorage.getItem('userId'), thread.creatorId);
+    console.log(check_user_is_admin, localStorage.getItem('userRole'));
+
+    if (check_user_is_creator || check_user_is_admin) {
+        const editButton = document.createElement('button');
+        editButton.textContent = 'Edit';
+        editButton.onclick = () => render_edit_thread_screen(thread);
+        thread_single_detail.appendChild(editButton);
+    }
 
     const single_thread_back = document.createElement('button');
     single_thread_back.textContent = 'Back';
     single_thread_back.onclick = render_dashboard;
 
-    main.appendChild(thread_sigle_detail);
+    main.appendChild(thread_single_detail);
     main.appendChild(single_thread_back);
+}
+
+// ------------ 2.3.1. Editing a thread ------------ 
+function render_edit_thread_screen(thread) {
+    const main = document.getElementById('main');
+    clear_element(main);
+
+    const form = document.createElement('form');
+    form.id = 'editThreadForm';
+    form.addEventListener('submit', (event) => handle_thread_edit(event, thread.id));
+
+    const titleInputDiv = create_div('Thread Title', 'text', 'editThreadTitle');
+    const contentInputDiv = create_div('Content', 'text', 'editThreadContent');
+    const publicCheckboxDiv = create_checkbox('editThreadPublic', 'Make Public');
+    const lockedCheckboxDiv = create_checkbox('editThreadLocked', 'Lock Thread');
+
+    const titleInput = titleInputDiv.querySelector('input');
+    const contentInput = contentInputDiv.querySelector('input');
+    const publicCheckbox = publicCheckboxDiv.querySelector('input');
+    const lockedCheckbox = lockedCheckboxDiv.querySelector('input');
+
+    titleInput.value = thread.title;
+    contentInput.value = thread.content;
+    publicCheckbox.checked = thread.isPublic;
+    lockedCheckbox.checked = thread.lock;
+    console.log(thread)
+
+    form.appendChild(titleInputDiv);
+    form.appendChild(contentInputDiv);
+    form.appendChild(publicCheckboxDiv);
+    form.appendChild(lockedCheckboxDiv);
+
+    const saveButton = document.createElement('button');
+    saveButton.type = 'submit';
+    saveButton.textContent = 'Save';
+    form.appendChild(saveButton);
+
+    const cancelButton = document.createElement('button');
+    cancelButton.type = 'button';
+    cancelButton.textContent = 'Cancel';
+    cancelButton.onclick = () => render_single_thread(thread);
+    form.appendChild(cancelButton);
+
+    main.appendChild(form);
+}
+
+function handle_thread_edit(event, threadId) {
+    event.preventDefault();
+
+    const title = document.getElementById('editThreadTitle').value;
+    const content = document.getElementById('editThreadContent').value;
+    const isPublic = document.getElementById('editThreadPublic').checked;
+    const isLocked = document.getElementById('editThreadLocked').checked;
+
+    const token = localStorage.getItem('authToken');
+
+    fetch(`http://localhost:${BACKEND_PORT}/thread`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: threadId, title, content, isPublic, isLocked }),
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Thread update error: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(updatedThread => {
+            console.log('Thread updated successfully', updatedThread);
+            alert('Thread updated successfully!');
+            render_single_thread(updatedThread);
+        })
+        .catch(error => {
+            console.error('Thread update error', error);
+            error_popup_window('Thread update error: ' + error.message);
+        });
 }
 
