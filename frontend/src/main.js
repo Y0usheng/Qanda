@@ -86,26 +86,50 @@ function handle_login(event) {
 
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
+
     fetch(`http://localhost:${BACKEND_PORT}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=UTF-8' },
         body: JSON.stringify({ email, password })
     })
         .then(response => {
-            if (!response.ok) throw new Error(`Login error: HTTP error! status: ${response.status}`);;
+            if (!response.ok) throw new Error(`Login error: HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
             if (!data) {
                 error_popup_window(data.error);
             } else {
-                console.log('Login successful', data);
                 localStorage.setItem('authToken', data.token);
                 localStorage.setItem('userId', data.userId);
-                localStorage.setItem('userRole', data.admin ? 'admin' : 'user');
-                alert('Login successful!');
-                render_dashboard();
+
+                console.log('Login successful!', data);
+
+                const token = localStorage.getItem('authToken');
+                const userId = localStorage.getItem('userId');
+
+                return fetch(`http://localhost:${BACKEND_PORT}/user?userId=${userId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json; charset=UTF-8',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
             }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch user details: HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(userDetails => {
+            const userRole = userDetails.admin ? 'admin' : 'user';
+            localStorage.setItem('userRole', userRole);
+
+            console.log('userRole', userDetails.admin, userRole);
+            alert('Login successful!');
+            render_dashboard();
         })
         .catch(error => {
             console.error('Login failed', error);
@@ -160,11 +184,33 @@ function handle_register(event) {
             return response.json();
         })
         .then(data => {
-            console.log('Registration successful', data);
-            alert('Registration successful!');
             localStorage.setItem('authToken', data.token);
             localStorage.setItem('userId', data.userId);
-            localStorage.setItem('userRole', data.admin ? 'admin' : 'user');
+
+            const token = localStorage.getItem('authToken');
+            const userId = localStorage.getItem('userId');
+
+            return fetch(`http://localhost:${BACKEND_PORT}/user?userId=${userId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json; charset=UTF-8',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch user details: HTTP error ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(userDetails => {
+            const userRole = userDetails.admin ? 'admin' : 'user';
+            localStorage.setItem('userRole', userRole);
+
+            console.log('userRole', userDetails.admin, userRole);
+            alert('Registration successful!');
+            console.log('Registration successful');
             render_dashboard();
         })
         .catch(error => {
@@ -172,6 +218,7 @@ function handle_register(event) {
             error_popup_window('Registration error: ' + error.message);
         });
 }
+
 
 // ------------ 2.1.3. Error Popup ------------ 
 function error_popup_window(message) {
