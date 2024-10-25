@@ -1105,6 +1105,21 @@ function display_user_profile(user) {
     const profileDiv = document.createElement('div');
     profileDiv.className = 'profile-box';
 
+    if (user.image && user.image.trim() !== '') {
+        const profileImage = document.createElement('img');
+        profileImage.className = 'profile-image';
+        profileImage.src = user.image;
+        profileImage.alt = `${user.name || `User ${user.id}`}'s Profile Picture`;
+        profileImage.style.width = '150px';
+        profileImage.style.height = '150px';
+        profileImage.style.borderRadius = '50%';
+        profileDiv.appendChild(profileImage);
+    } else {
+        const noImageText = document.createElement('p');
+        noImageText.textContent = 'Image: null';
+        profileDiv.appendChild(noImageText);
+    }
+
     const nameHeading = document.createElement('h2');
     const userName = user.name && user.name.trim() !== '' ? user.name : `User ${user.id}`;
     nameHeading.textContent = `${userName}'s Profile`;
@@ -1119,6 +1134,13 @@ function display_user_profile(user) {
     profileDiv.appendChild(adminParagraph);
 
     main.appendChild(profileDiv);
+
+    if (parseInt(localStorage.getItem('userId')) === user.id) {
+        const updateButton = document.createElement('button');
+        updateButton.textContent = 'Update Profile';
+        updateButton.onclick = render_update_profile_form;
+        main.appendChild(updateButton);
+    }
 
     const backButton = document.createElement('button');
     backButton.textContent = 'Back';
@@ -1201,3 +1223,69 @@ function load_user_threads(userId) {
 
 // ------------ 2.5.2 Viewing your own profile ------------ 
 // Implement a button in the render_dashboard() function.
+
+// ------------ 2.5.3. Updating your profile ------------ 
+function render_update_profile_form() {
+    const main = document.getElementById('main');
+    clear_element(main);
+
+    const form = document.createElement('form');
+    form.id = 'updateProfileForm';
+    form.onsubmit = handle_profile_update;
+
+    form.appendChild(create_div('Email', 'email', 'updateEmail'));
+    form.appendChild(create_div('Name', 'text', 'updateName'));
+    form.appendChild(create_div('Password', 'password', 'updatePassword'));
+
+    const imageDiv = document.createElement('div');
+    const imageLabel = document.createElement('label');
+    imageLabel.innerText = 'Profile Image';
+    const imageInput = document.createElement('input');
+    imageInput.type = 'file';
+    imageInput.id = 'updateImage';
+    imageInput.accept = 'image/png, image/jpeg';
+    imageDiv.appendChild(imageLabel);
+    imageDiv.appendChild(imageInput);
+    form.appendChild(imageDiv);
+
+    const saveButton = get_button('Save Changes', handle_profile_update);
+    saveButton.type = 'submit';
+    form.appendChild(saveButton);
+
+    const cancelButton = get_button('Cancel');
+    cancelButton.onclick = () => {
+        const userId = localStorage.getItem('userId');
+        render_profile(userId);
+    };
+    form.appendChild(cancelButton);
+
+    main.appendChild(form);
+}
+
+function handle_profile_update(event) {
+    event.preventDefault();
+
+    const token = localStorage.getItem('authToken');
+    const userId = localStorage.getItem('userId');
+
+    const email = document.getElementById('updateEmail').value;
+    const name = document.getElementById('updateName').value;
+    const password = document.getElementById('updatePassword').value;
+    const imageFile = document.getElementById('updateImage').files[0];
+
+    let profileData = { email, name, password };
+
+    if (imageFile) {
+        fileToDataUrl(imageFile)
+            .then(dataUrl => {
+                profileData.image = dataUrl;
+                return update_profile(userId, profileData, token);
+            })
+            .catch(error => {
+                console.error('Failed to convert image to data URL:', error);
+                error_popup_window('Failed to process image. Please try again.');
+            });
+    } else {
+        update_profile(userId, profileData, token);
+    }
+}
