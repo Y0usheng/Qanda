@@ -725,6 +725,15 @@ function create_comment_element(threadId, comment, indentLevel = 0) {
     replyButton.onclick = () => render_reply_modal(commentDiv, threadId, comment.id, indentLevel + 1);
     commentDiv.appendChild(replyButton);
 
+    const userId = parseInt(localStorage.getItem('userId'));
+    const userRole = localStorage.getItem('userRole');
+    if (comment.creatorId === userId || userRole === 'admin') {
+        const editButton = document.createElement('button');
+        editButton.textContent = 'Edit';
+        editButton.onclick = () => render_edit_comment_modal(commentDiv, comment);
+        commentDiv.appendChild(editButton);
+    }
+
     return commentDiv;
 }
 
@@ -829,3 +838,57 @@ function render_reply_modal(commentDiv, threadId, parentCommentId, indentLevel) 
 }
 
 // ------------ 2.4.3. Editing a comment ------------ 
+function render_edit_comment_modal(commentDiv, comment) {
+    const modal = document.createElement('div');
+    modal.className = 'edit-modal';
+
+    const commentTextarea = document.createElement('textarea');
+    commentTextarea.className = 'comment-textarea';
+    commentTextarea.value = comment.content;
+    modal.appendChild(commentTextarea);
+
+    const commentButton = document.createElement('button');
+    commentButton.textContent = 'Update Comment';
+    commentButton.onclick = () => {
+        handle_comment_edit(commentTextarea.value, comment.id, modal, commentDiv);
+    };
+    modal.appendChild(commentButton);
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = 'Close';
+    closeButton.onclick = () => commentDiv.removeChild(modal);
+    modal.appendChild(closeButton);
+
+    commentDiv.appendChild(modal);
+}
+
+function handle_comment_edit(updatedText, commentId, modal, commentDiv) {
+    if (!updatedText.trim()) {
+        alert('Comment cannot be empty');
+        return;
+    }
+
+    const token = localStorage.getItem('authToken');
+    fetch(`http://localhost:${BACKEND_PORT}/comment`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ "id": commentId, "content": updatedText, })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to edit comment: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(() => {
+            console.log('Comment updated successfully');
+            const commentText = commentDiv.querySelector('p');
+            commentText.textContent = updatedText;
+            commentDiv.removeChild(modal);
+        })
+        .catch(error => {
+            console.error('Failed to edit comment', error);
+            error_popup_window('Failed to edit comment: ' + error.message);
+        });
+}
