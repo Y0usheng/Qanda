@@ -1289,3 +1289,27 @@ function handle_profile_update(event) {
         update_profile(userId, profileData, token);
     }
 }
+
+function update_profile(userId, profileData, token) {
+    fetch(`http://localhost:${BACKEND_PORT}/user`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(profileData)
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Profile update error: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(() => {
+            console.log('Profile updated successfully');
+            alert('Profile updated successfully!');
+            render_profile(userId);
+        })
+        .catch(error => {
+            console.error('Profile update error', error);
+            error_popup_window('Profile update error: ' + error.message);
+        });
+}
