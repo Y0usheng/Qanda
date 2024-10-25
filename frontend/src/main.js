@@ -54,6 +54,11 @@ function init() {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
+//////          2.1. Milestone 1 - Registration & Login              //////
+///////////////////////////////////////////////////////////////////////////
+
+// ------------ 2.1.1. Login ------------ 
 function render_login_form() {
     const main = document.getElementById('main');
     clear_element(main);
@@ -132,6 +137,7 @@ function handle_login(event) {
         });
 }
 
+// ------------ 2.1.2. Registration ------------ 
 function render_register_form() {
     const main = document.getElementById('main');
     clear_element(main);
@@ -214,7 +220,6 @@ function handle_register(event) {
         });
 }
 
-
 // ------------ 2.1.3. Error Popup ------------ 
 function error_popup_window(message) {
     let errorPopup = document.getElementById('errorPopup');
@@ -289,6 +294,10 @@ function handle_logout() {
     localStorage.removeItem('authToken');
     render_login_form();
 }
+
+///////////////////////////////////////////////////////////////////////////
+//////          2.2. Milestone 2 - Making Threads                    //////
+///////////////////////////////////////////////////////////////////////////
 
 // ------------ 2.2.1. Making a thread ------------ 
 function create_thread() {
@@ -518,6 +527,10 @@ function render_single_thread(thread) {
     load_comments(thread.id);
 }
 
+///////////////////////////////////////////////////////////////////////////
+//////          2.3. Milestone 3 - Thread Interactions               //////
+///////////////////////////////////////////////////////////////////////////
+
 // ------------ 2.3.1. Editing a thread ------------ 
 function render_edit_thread_screen(thread) {
     const main = document.getElementById('main');
@@ -716,6 +729,10 @@ function handle_thread_watch(threadId, isWatch) {
             error_popup_window('Thread watch/unwatch error: ' + error.message);
         });
 }
+
+///////////////////////////////////////////////////////////////////////////
+//////          2.4. Milestone 4 - Comments                          //////
+///////////////////////////////////////////////////////////////////////////
 
 // ------------ 2.4.1. Showing comments ------------ 
 function load_comments(threadId) {
@@ -1038,6 +1055,10 @@ function handle_comment_like(threadId, commentId, isLike) {
             error_popup_window(`Failed to ${isLike ? 'like' : 'unlike'} comment: ` + error.message);
         });
 }
+
+///////////////////////////////////////////////////////////////////////////
+//////          2.5. Milestone 5 - Handling Users                    //////
+///////////////////////////////////////////////////////////////////////////
 
 // ------------ 2.5.1. Viewing a profile ------------ 
 function create_user_name_element(userId) {
