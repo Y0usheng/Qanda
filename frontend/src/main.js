@@ -274,6 +274,14 @@ function render_dashboard() {
     CreateThreadButton.onclick = create_thread;
     main.appendChild(CreateThreadButton);
 
+    const viewProfileButton = document.createElement('button');
+    viewProfileButton.textContent = 'View Profile';
+    viewProfileButton.onclick = () => {
+        const userId = localStorage.getItem('userId');
+        render_profile(userId);
+    };
+    main.appendChild(viewProfileButton);
+
     const logoutButton = document.createElement('button');
     logoutButton.textContent = 'Logout';
     logoutButton.onclick = handle_logout;
@@ -1089,6 +1097,7 @@ function render_profile(userId) {
             error_popup_window('Failed to fetch user profile: ' + error.message);
         });
 }
+
 function display_user_profile(user) {
     const main = document.getElementById('main');
     clear_element(main);
@@ -1150,7 +1159,7 @@ function load_user_threads(userId) {
             return Promise.all(threadDetailPromises);
         })
         .then(allThreads => {
-            const userThreads = allThreads.filter(thread => thread.creatorId === userId);
+            const userThreads = allThreads.filter(thread => thread.creatorId === parseInt(userId));
 
             const threadsDiv = document.createElement('div');
             threadsDiv.className = 'threads-box';
@@ -1189,3 +1198,6 @@ function load_user_threads(userId) {
             error_popup_window('Failed to load user threads: ' + error.message);
         });
 }
+
+// ------------ 2.5.2 Viewing your own profile ------------ 
+// Implement a button in the render_dashboard() function.
