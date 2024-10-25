@@ -662,21 +662,23 @@ function load_comments(threadId) {
             return response.json();
         })
         .then(comments => {
-            comments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
             const commentsContainer = document.createElement('div');
             commentsContainer.className = 'comments-container';
 
-            comments.filter(comment => comment.parentCommentId === null).forEach(comment => {
-                const commentElement = create_comment_element(threadId, comment, 0);
+            const stack = comments.filter(comment => comment.parentCommentId === null).map(comment => ({ comment, indentLevel: 0 }));
+            while (stack.length > 0) {
+                const { comment, indentLevel } = stack.pop();
+                const commentElement = create_comment_element(threadId, comment, indentLevel);
                 commentsContainer.appendChild(commentElement);
-                comments.filter(comment => comment.parentCommentId !== null).forEach(cmt => {
-                    if (cmt.parentCommentId === comment.id) {
-                        const commentElement = create_comment_element(threadId, cmt, 1);
-                        commentsContainer.appendChild(commentElement);
-                    }
+
+                const childComments = comments.filter(cmt => cmt.parentCommentId === comment.id);
+                childComments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                childComments.forEach(childComment => {
+                    stack.push({ comment: childComment, indentLevel: indentLevel + 1 });
                 });
-            });
+            }
 
             const main = document.getElementById('main');
             main.appendChild(commentsContainer);
@@ -825,3 +827,5 @@ function render_reply_modal(commentDiv, threadId, parentCommentId, indentLevel) 
 
     commentDiv.appendChild(modal);
 }
+
+// ------------ 2.4.3. Editing a comment ------------ 
