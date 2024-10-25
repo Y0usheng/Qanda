@@ -492,53 +492,33 @@ function render_single_thread(thread) {
     thread_single_detail.appendChild(contentElement);
     thread_single_detail.appendChild(likesElement);
 
-    const check_user_is_creator = localStorage.getItem('userId') === thread.creatorId.toString();
-    const check_user_is_admin = localStorage.getItem('userRole') === 'admin';
-
-    if (check_user_is_creator || check_user_is_admin) {
-        const editButton = document.createElement('button');
-        editButton.textContent = 'Edit';
-        editButton.onclick = () => render_edit_thread_screen(thread);
-        thread_single_detail.appendChild(editButton);
-
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Delete';
-        deleteButton.onclick = () => handle_thread_delete(thread.id);
-        thread_single_detail.appendChild(deleteButton);
-    }
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'button-container';
 
     const likeButton = document.createElement('button');
     likeButton.id = 'likeButton';
     likeButton.disabled = thread.lock;
-    if (thread.likes.includes(parseInt(localStorage.getItem('userId')))) {
-        likeButton.textContent = 'Unlike';
-    } else {
-        likeButton.textContent = 'Like';
-    }
-    const userHasLiked = thread.likes.includes(parseInt(localStorage.getItem('userId')));
-    likeButton.onclick = () => handle_thread_like(thread.id, !userHasLiked);
-    thread_single_detail.appendChild(likeButton);
+    likeButton.textContent = thread.likes.includes(parseInt(localStorage.getItem('userId'))) ? 'Unlike' : 'Like';
+    likeButton.onclick = () => handle_thread_like(thread.id, !thread.likes.includes(parseInt(localStorage.getItem('userId'))));
+    buttonContainer.appendChild(likeButton);
 
     const watchButton = document.createElement('button');
     watchButton.id = 'watchButton';
-    if (thread.watchees.includes(parseInt(localStorage.getItem('userId')))) {
-        watchButton.textContent = 'Unwatch';
-    } else {
-        watchButton.textContent = 'Watch';
-    }
-    const userIsWatching = thread.watchees.includes(parseInt(localStorage.getItem('userId')));
-    watchButton.onclick = () => handle_thread_watch(thread.id, !userIsWatching);
-    thread_single_detail.appendChild(watchButton);
+    watchButton.textContent = thread.watchees.includes(parseInt(localStorage.getItem('userId'))) ? 'Unwatch' : 'Watch';
+    watchButton.onclick = () => handle_thread_watch(thread.id, !thread.watchees.includes(parseInt(localStorage.getItem('userId'))));
+    buttonContainer.appendChild(watchButton);
 
     const single_thread_back = document.createElement('button');
     single_thread_back.textContent = 'Back';
     single_thread_back.onclick = render_dashboard;
+    buttonContainer.appendChild(single_thread_back);
 
+    thread_single_detail.appendChild(buttonContainer);
     main.appendChild(thread_single_detail);
-    main.appendChild(single_thread_back);
 
     load_comments(thread.id);
 }
+
 
 ///////////////////////////////////////////////////////////////////////////
 //////          2.3. Milestone 3 - Thread Interactions               //////
@@ -1075,9 +1055,10 @@ function handle_comment_like(threadId, commentId, isLike) {
 
 // ------------ 2.5.1. Viewing a profile ------------ 
 function create_user_name_element(userId) {
-    const userNameElement = document.createElement('div');
+    const userNameElement = document.createElement('a');
     userNameElement.style.cursor = 'pointer';
     userNameElement.className = 'username';
+    userNameElement.href = '#';
 
     const token = localStorage.getItem('authToken');
     fetch(`http://localhost:${BACKEND_PORT}/user?userId=${userId}`, {
@@ -1093,7 +1074,10 @@ function create_user_name_element(userId) {
         })
         .then(user => {
             userNameElement.textContent = user.name && user.name.trim() !== '' ? user.name : `User ${userId}`;
-            userNameElement.addEventListener('click', () => render_profile(userId));
+            userNameElement.addEventListener('click', (event) => {
+                event.preventDefault();
+                render_profile(userId);
+            });
         })
         .catch(error => {
             console.error('Failed to fetch user name', error);
@@ -1102,6 +1086,7 @@ function create_user_name_element(userId) {
 
     return userNameElement;
 }
+
 
 function render_profile(userId) {
     const token = localStorage.getItem('authToken');
