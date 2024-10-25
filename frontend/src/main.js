@@ -732,6 +732,11 @@ function create_comment_element(threadId, comment, indentLevel = 0) {
         editButton.textContent = 'Edit';
         editButton.onclick = () => render_edit_comment_modal(commentDiv, comment);
         commentDiv.appendChild(editButton);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.onclick = () => handle_comment_delete(comment.id, commentDiv);
+        commentDiv.appendChild(deleteButton);
     }
 
     const likeButton = document.createElement('button');
@@ -900,6 +905,35 @@ function handle_comment_edit(updatedText, commentId, modal, commentDiv) {
         .catch(error => {
             console.error('Failed to edit comment', error);
             error_popup_window('Failed to edit comment: ' + error.message);
+        });
+}
+
+function handle_comment_delete(commentId, commentDiv) {
+    const token = localStorage.getItem('authToken');
+
+    if (!confirm('Are you sure you want to delete this comment?')) {
+        return;
+    }
+
+    fetch(`http://localhost:${BACKEND_PORT}/comment`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: commentId })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to delete comment: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(() => {
+            console.log('Comment deleted successfully');
+            commentDiv.parentNode.removeChild(commentDiv);
+        })
+        .catch(error => {
+            console.error('Failed to delete comment', error);
+            error_popup_window('Failed to delete comment: ' + error.message);
         });
 }
 
