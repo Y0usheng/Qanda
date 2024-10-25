@@ -1089,3 +1089,103 @@ function render_profile(userId) {
             error_popup_window('Failed to fetch user profile: ' + error.message);
         });
 }
+function display_user_profile(user) {
+    const main = document.getElementById('main');
+    clear_element(main);
+
+    const profileDiv = document.createElement('div');
+    profileDiv.className = 'profile-box';
+
+    const nameHeading = document.createElement('h2');
+    const userName = user.name && user.name.trim() !== '' ? user.name : `User ${user.id}`;
+    nameHeading.textContent = `${userName}'s Profile`;
+    profileDiv.appendChild(nameHeading);
+
+    const emailParagraph = document.createElement('p');
+    emailParagraph.textContent = `Email: ${user.email && user.email.trim() !== '' ? user.email : 'null'}`;
+    profileDiv.appendChild(emailParagraph);
+
+    const adminParagraph = document.createElement('p');
+    adminParagraph.textContent = `Admin: ${user.admin ? 'Yes' : 'No'}`;
+    profileDiv.appendChild(adminParagraph);
+
+    main.appendChild(profileDiv);
+
+    const backButton = document.createElement('button');
+    backButton.textContent = 'Back';
+    backButton.onclick = () => render_dashboard();
+    main.appendChild(backButton);
+}
+
+function load_user_threads(userId) {
+    const token = localStorage.getItem('authToken');
+    let startIndex = 0;
+
+    // First, fetch all thread IDs
+    fetch(`http://localhost:${BACKEND_PORT}/threads?start=${startIndex}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to load thread IDs: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(threadIds => {
+            const threadDetailPromises = threadIds.map(threadId => {
+                return fetch(`http://localhost:${BACKEND_PORT}/thread?id=${threadId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json; charset=UTF-8',
+                        Authorization: `Bearer ${token}`,
+                    },
+                }).then(response => {
+                    if (!response.ok) throw new Error(`Failed to load thread details: HTTP error! status: ${response.status}`);
+                    return response.json();
+                });
+            });
+
+            return Promise.all(threadDetailPromises);
+        })
+        .then(allThreads => {
+            const userThreads = allThreads.filter(thread => thread.creatorId === userId);
+
+            const threadsDiv = document.createElement('div');
+            threadsDiv.className = 'threads-box';
+
+            const heading = document.createElement('h3');
+            heading.textContent = `${userThreads.length} Threads by User`;
+            threadsDiv.appendChild(heading);
+
+            userThreads.forEach(thread => {
+                const threadElement = document.createElement('div');
+                threadElement.className = 'thread-box';
+                threadElement.style.cursor = 'pointer';
+
+                const threadTitle = document.createElement('h4');
+                threadTitle.textContent = thread.title;
+
+                const threadContent = document.createElement('p');
+                threadContent.textContent = thread.content;
+
+                const threadInfo = document.createElement('p');
+                threadInfo.textContent = `Likes: ${thread.likes.length}`;
+
+                threadElement.appendChild(threadTitle);
+                threadElement.appendChild(threadContent);
+                threadElement.appendChild(threadInfo);
+
+                threadElement.addEventListener('click', () => render_single_thread(thread));
+
+                threadsDiv.appendChild(threadElement);
+            });
+
+            main.appendChild(threadsDiv);
+        })
+        .catch(error => {
+            console.error('Failed to load user threads', error);
+            error_popup_window('Failed to load user threads: ' + error.message);
+        });
+}
