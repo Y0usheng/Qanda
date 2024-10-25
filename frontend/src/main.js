@@ -409,13 +409,32 @@ function get_thread_details(threadId) {
 function create_thread_div(thread) {
     const threadDiv = document.createElement('div');
     threadDiv.className = 'thread-box';
-    threadDiv.style.maxHeight = '100px';
-    threadDiv.style.cursor = 'pointer';
 
     get_thread_details(thread)
         .then(fullThread => {
-            threadDiv.textContent = `Title: ${fullThread.title}, Body content: ${fullThread.content}, Number of likes: ${fullThread.likes.length}`;
-            threadDiv.addEventListener('click', () => {
+            const threadContentDiv = document.createElement('div');
+            threadContentDiv.className = 'thread-content';
+
+            const threadTitle = document.createElement('h4');
+            threadTitle.textContent = `Title: ${fullThread.title}`;
+
+            const threadContent = document.createElement('p');
+            threadContent.textContent = `Body content: ${fullThread.content}`;
+
+            const threadLikes = document.createElement('p');
+            threadLikes.textContent = `Number of likes: ${fullThread.likes.length}`;
+
+            threadContentDiv.appendChild(threadTitle);
+            threadContentDiv.appendChild(threadContent);
+            threadContentDiv.appendChild(threadLikes);
+            threadContentDiv.style.cursor = 'pointer';
+
+            threadDiv.appendChild(threadContentDiv);
+
+            const userNameElement = create_user_name_element(fullThread.creatorId);
+            threadDiv.appendChild(userNameElement);
+
+            threadContentDiv.addEventListener('click', () => {
                 render_single_thread(fullThread);
             });
         })
@@ -423,6 +442,7 @@ function create_thread_div(thread) {
             console.error('Error fetching thread details:', error);
             threadDiv.textContent = 'Failed to load thread details';
         });
+
     return threadDiv;
 }
 
@@ -767,6 +787,9 @@ function create_comment_element(threadId, comment, indentLevel = 0) {
     timeSinceComment.textContent = get_time_since_comment(comment.createdAt);
     commentDiv.appendChild(timeSinceComment);
 
+    const userNameElement = create_user_name_element(comment.creatorId);
+    commentDiv.appendChild(userNameElement);
+
     const replyButton = document.createElement('button');
     replyButton.textContent = 'Reply';
     replyButton.onclick = () => render_reply_modal(commentDiv, threadId, comment.id, indentLevel + 1);
@@ -1010,5 +1033,59 @@ function handle_comment_like(threadId, commentId, isLike) {
         .catch(error => {
             console.error(`Failed to ${isLike ? 'like' : 'unlike'} comment`, error);
             error_popup_window(`Failed to ${isLike ? 'like' : 'unlike'} comment: ` + error.message);
+        });
+}
+
+// ------------ 2.5.1. Viewing a profile ------------ 
+function create_user_name_element(userId) {
+    const userNameElement = document.createElement('div');
+    userNameElement.style.cursor = 'pointer';
+    userNameElement.className = 'username';
+
+    const token = localStorage.getItem('authToken');
+    fetch(`http://localhost:${BACKEND_PORT}/user?userId=${userId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to fetch user details: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(user => {
+            userNameElement.textContent = user.name && user.name.trim() !== '' ? user.name : `User ${userId}`;
+            userNameElement.addEventListener('click', () => render_profile(userId));
+        })
+        .catch(error => {
+            console.error('Failed to fetch user name', error);
+            userNameElement.textContent = 'Unknown User';
+        });
+
+    return userNameElement;
+}
+
+function render_profile(userId) {
+    const token = localStorage.getItem('authToken');
+
+    fetch(`http://localhost:${BACKEND_PORT}/user?userId=${userId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to fetch user details: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(user => {
+            display_user_profile(user);
+            load_user_threads(userId);
+        })
+        .catch(error => {
+            console.error('Failed to fetch user profile', error);
+            error_popup_window('Failed to fetch user profile: ' + error.message);
         });
 }
