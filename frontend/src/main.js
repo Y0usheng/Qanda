@@ -734,6 +734,16 @@ function create_comment_element(threadId, comment, indentLevel = 0) {
         commentDiv.appendChild(editButton);
     }
 
+    const likeButton = document.createElement('button');
+    likeButton.textContent = comment.likes.includes(userId) ? 'Unlike' : 'Like';
+    likeButton.onclick = () => handle_comment_like(threadId, comment.id, !comment.likes.includes(userId));
+    commentDiv.appendChild(likeButton);
+
+    const likesElement = document.createElement('span');
+    likesElement.className = 'comment-likes';
+    likesElement.textContent = `Likes: ${comment.likes.length}`;
+    commentDiv.appendChild(likesElement);
+
     return commentDiv;
 }
 
@@ -890,5 +900,34 @@ function handle_comment_edit(updatedText, commentId, modal, commentDiv) {
         .catch(error => {
             console.error('Failed to edit comment', error);
             error_popup_window('Failed to edit comment: ' + error.message);
+        });
+}
+
+// ------------ 2.4.4. Liking a comment ------------ 
+function handle_comment_like(threadId, commentId, isLike) {
+    const token = localStorage.getItem('authToken');
+    fetch(`http://localhost:${BACKEND_PORT}/comment/like`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ "id": commentId, "turnon": isLike })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to ${isLike ? 'like' : 'unlike'} comment: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(() => {
+            console.log('Thread updated successfully after like/unlike');
+            return get_thread_details(threadId);
+        })
+        .then(updatedThread => {
+            console.log('updatedThread', updatedThread)
+            render_single_thread(updatedThread);
+        })
+        .catch(error => {
+            console.error(`Failed to ${isLike ? 'like' : 'unlike'} comment`, error);
+            error_popup_window(`Failed to ${isLike ? 'like' : 'unlike'} comment: ` + error.message);
         });
 }
