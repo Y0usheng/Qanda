@@ -165,3 +165,102 @@ footer {
 .back-button {
     margin-top: 20px;
 }
+
+
+.profile-box {
+    margin: 0 auto;
+    max-width: 600px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.profile-image {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin-bottom: 20px;
+}
+
+button {
+    padding: 10px;
+    margin: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: white;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.thread-box {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.comment-input-div {
+    margin-top: 30px;
+    width: 100%;
+    max-width: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.comment-textarea {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.2em;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+.comment-input-div button {
+    align-self: flex-start;
+    padding: 10px 20px;
+    font-size: 1.1em;
+}
+
+
+@media (max-width: 700px) {
+
+    .profile-box,
+    .thread-box {
+        padding: 10px;
+        width: 90%;
+    }
+
+    .profile-image {
+        width: 100px;
+        height: 100px;
+    }
+
+    button {
+        font-size: 14px;
+        padding: 8px;
+    }
+}
+
+@media (min-width: 700px) and (max-width: 1024px) {
+
+    .profile-box,
+    .thread-box {
+        padding: 15px;
+        width: 80%;
+    }
+
+    .profile-image {
+        width: 120px;
+        height: 120px;
+    }
+}
