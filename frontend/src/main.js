@@ -39,10 +39,6 @@ function create_checkbox(id, labelContent) {
     return div;
 }
 
-function btn1() {
-    console.log("Login button!")
-}
-
 function clear_element(element) {
     while (element.firstChild) {
         element.removeChild(element.firstChild);
@@ -50,7 +46,6 @@ function clear_element(element) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
-
 function init() {
     if (localStorage.getItem('authToken')) {
         render_dashboard();
@@ -70,7 +65,7 @@ function render_login_form() {
     form.appendChild(create_div("Email", "email", "loginEmail"));
     form.appendChild(create_div("Password", "password", "loginPassword"));
 
-    const loginButton = get_button("Login", btn1);
+    const loginButton = get_button("Login");
     loginButton.type = "submit";
     form.appendChild(loginButton);
 
@@ -1135,6 +1130,39 @@ function display_user_profile(user) {
 
     main.appendChild(profileDiv);
 
+    const current_userRole = localStorage.getItem('userRole');
+    const current_userId = parseInt(localStorage.getItem('userId'));
+
+    if (current_userRole === 'admin' && current_userId !== user.id) {
+        const adminSelectDiv = document.createElement('div');
+        const adminLabel = document.createElement('label');
+        adminLabel.innerText = 'User Role: ';
+
+        const adminSelect = document.createElement('select');
+        adminSelect.id = 'adminStatusSelect';
+
+        const userOption = document.createElement('option');
+        userOption.value = 'user';
+        userOption.text = 'User';
+        adminSelect.appendChild(userOption);
+
+        const adminOption = document.createElement('option');
+        adminOption.value = 'admin';
+        adminOption.text = 'Admin';
+        adminSelect.appendChild(adminOption);
+
+        adminSelect.value = user.admin ? 'admin' : 'user';
+
+        adminSelectDiv.appendChild(adminLabel);
+        adminSelectDiv.appendChild(adminSelect);
+        profileDiv.appendChild(adminSelectDiv);
+
+        const updateButton = document.createElement('button');
+        updateButton.textContent = 'Update';
+        updateButton.onclick = () => handle_update_admin_status(user.id);
+        profileDiv.appendChild(updateButton);
+    }
+
     if (parseInt(localStorage.getItem('userId')) === user.id) {
         const updateButton = document.createElement('button');
         updateButton.textContent = 'Update Profile';
@@ -1311,5 +1339,35 @@ function update_profile(userId, profileData, token) {
         .catch(error => {
             console.error('Profile update error', error);
             error_popup_window('Profile update error: ' + error.message);
+        });
+}
+
+// ------------ 2.5.4. Updating someone as admin ------------ 
+function handle_update_admin_status(userId) {
+    const token = localStorage.getItem('authToken');
+    const newRole = document.getElementById('adminStatusSelect').value;
+    const isAdmin = newRole === 'admin';
+    console.log(isAdmin, newRole)
+
+    fetch(`http://localhost:${BACKEND_PORT}/user/admin`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ "userId": parseInt(userId), "turnon": isAdmin })
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to update user role: HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(() => {
+            console.log('User role updated successfully');
+            alert('User role updated successfully!');
+            render_profile(userId);
+        })
+        .catch(error => {
+            console.error('Failed to update user role', error);
+            error_popup_window('Failed to update user role: ' + error.message);
         });
 }
