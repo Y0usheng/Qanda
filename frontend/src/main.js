@@ -267,28 +267,36 @@ function error_popup_window(message) {
 // ------------ 2.1.4. Dashboard ------------ 
 function render_dashboard() {
     const main = document.getElementById('main');
-    clear_element(main);;
+    clear_element(main);
 
-    const CreateThreadButton = document.createElement('button');
-    CreateThreadButton.textContent = 'Create Thread';
-    CreateThreadButton.onclick = create_thread;
-    main.appendChild(CreateThreadButton);
+    const dashboardContainer = document.createElement('div');
+    dashboardContainer.className = 'dashboard-container';
 
-    const viewProfileButton = document.createElement('button');
-    viewProfileButton.textContent = 'View Profile';
-    viewProfileButton.onclick = () => {
+    const actionButtonsDiv = document.createElement('div');
+    actionButtonsDiv.className = 'action-buttons';
+
+    const createThreadButton = get_button("Create Thread", create_thread);
+    actionButtonsDiv.appendChild(createThreadButton);
+
+    const viewProfileButton = get_button("View Profile", () => {
         const userId = localStorage.getItem('userId');
         render_profile(userId);
-    };
-    main.appendChild(viewProfileButton);
+    });
+    actionButtonsDiv.appendChild(viewProfileButton);
+    const logoutButton = get_button("Logout", handle_logout);
+    actionButtonsDiv.appendChild(logoutButton);
 
-    const logoutButton = document.createElement('button');
-    logoutButton.textContent = 'Logout';
-    logoutButton.onclick = handle_logout;
-    main.appendChild(logoutButton);
+    dashboardContainer.appendChild(actionButtonsDiv);
 
-    load_threads();
+    const threadsContainer = document.createElement('div');
+    threadsContainer.className = 'threads-container';
+
+    load_threads(threadsContainer);
+    dashboardContainer.appendChild(threadsContainer);
+
+    main.appendChild(dashboardContainer);
 }
+
 
 function handle_logout() {
     localStorage.removeItem('authToken');
@@ -366,10 +374,10 @@ function handle_thread_submission(event) {
 
 
 // ------------ 2.2.2. Getting a List of Threads ------------ 
-function load_threads(StartIndex = 0) {
-    const main = document.getElementById('main');
+function load_threads(threadsContainer, StartIndex = 0) {
     const token = localStorage.getItem('authToken');
     console.log('Retrieved token:', token);
+
     fetch(`http://localhost:${BACKEND_PORT}/threads?start=${StartIndex}`, {
         method: 'GET',
         headers: {
@@ -381,19 +389,24 @@ function load_threads(StartIndex = 0) {
         .then(data => {
             data.forEach(thread => {
                 const threadElement = create_thread_div(thread);
-                main.appendChild(threadElement);
+                threadsContainer.appendChild(threadElement);
             });
             if (data.length === 5) {
                 const moreButton = document.createElement('button');
                 moreButton.textContent = 'More';
                 moreButton.onclick = () => {
-                    load_threads(StartIndex + 5);
-                    main.removeChild(moreButton);
+                    load_threads(threadsContainer, StartIndex + 5);
+                    moreButton.remove();
                 };
-                main.appendChild(moreButton);
+                threadsContainer.appendChild(moreButton);
             }
+        })
+        .catch(error => {
+            console.error('Failed to load threads', error);
+            error_popup_window('Failed to load threads: ' + error.message);
         });
 }
+
 
 function get_thread_details(threadId) {
     const token = localStorage.getItem('authToken');
