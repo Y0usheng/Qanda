@@ -1,6 +1,8 @@
 import { BACKEND_PORT } from './config.js';
 // A helper you may want to use when uploading new images to the server.
 import { fileToDataUrl } from './helpers.js';
+// 引入新的 api
+import { api } from './api.js';
 
 function create_div(labelText, type, id) {
     const div = document.createElement("div");
@@ -81,60 +83,29 @@ function render_login_form() {
     main.appendChild(form);
 }
 
-function handle_login(event) {
+async function handle_login(event) {
     event.preventDefault();
 
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
 
-    fetch(`http://localhost:${BACKEND_PORT}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-        body: JSON.stringify({ email, password })
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Login error: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            if (!data) {
-                error_popup_window(data.error);
-            } else {
-                localStorage.setItem('authToken', data.token);
-                localStorage.setItem('userId', data.userId);
+    try {
+        const data = await api.auth.login(email, password);
 
-                console.log('Login successful!', data);
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('userId', data.userId);
 
-                const token = localStorage.getItem('authToken');
-                const userId = localStorage.getItem('userId');
+        const userDetails = await api.user.get(data.userId);
 
-                return fetch(`http://localhost:${BACKEND_PORT}/user?userId=${userId}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json; charset=UTF-8',
-                        Authorization: `Bearer ${token}`,
-                    },
-                });
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch user details: HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(userDetails => {
-            const userRole = userDetails.admin ? 'admin' : 'user';
-            localStorage.setItem('userRole', userRole);
-
-            console.log('userRole', userDetails.admin, userRole);
-            alert('Login successful!');
-            render_dashboard();
-        })
-        .catch(error => {
-            console.error('Login failed', error);
-            error_popup_window('Invalid email or password.');
-        });
+        const userRole = userDetails.admin ? 'admin' : 'user';
+        localStorage.setItem('userRole', userRole);
+        console.log('Login successful!', userDetails);
+        alert('Login successful!');
+        render_dashboard();
+    } catch (error) {
+        console.error('Login failed', error);
+        error_popup_window('Invalid email or password.');
+    }
 }
 
 // ------------ 2.1.2. Registration ------------ 
