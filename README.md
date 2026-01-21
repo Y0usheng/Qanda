@@ -1,16 +1,4 @@
-# Changelog
-
-- 9/10: Clarify section 2.5.1 - Viewing a profile.
-
-# Assessment 3 (HTML, CSS, Vanilla JS)
-
-[Please see course website for full spec](https://cgi.cse.unsw.edu.au/~cs6080/NOW/assessments/assignments/ass3)
-
-This assignment is due *Friday 25th October, 8pm*.
-
-Please run `./util/setup.sh` in your terminal before you begin. This will set up some checks in relation to the "Git Commit Requirements".
-
-## 2. Your Task - Qanda 
+Your Task - Qanda 
 
 In this assignment you are working on the frontend.
 
@@ -22,7 +10,7 @@ Instead of providing visuals of what the frontend (your task) should look like, 
 
 The requirements describe a series of **screens**. Screens can be popups/modals, or entire pages. The use of that language is so that you can choose how you want it to be displayed. A screen is essentially a certain state of your web-based application.
 
-### 2.1. Milestone 1 - Registration & Login (10%)
+### 2.1. Milestone 1 - Registration & Login
 
 Milestone 1 focuses on the basic user interface to register and log in to the site.
 
@@ -51,7 +39,7 @@ Milestone 1 focuses on the basic user interface to register and log in to the si
  * For now, the dashboard will be a blank screen that contains only a "logout" button visible at all times.
  * When this logout button is pressed, it removes the token from the state of the website (e.g. local storage) and then sends the user back to the login screen.
 
-### 2.2. Milestone 2 - Making Threads (15%)
+### 2.2. Milestone 2 - Making Threads
 
 Milestone 2 focuses on how to make a thread and then view that thread (along with others).
 
@@ -83,7 +71,7 @@ Milestone 2 focuses on how to make a thread and then view that thread (along wit
   * Number of likes
 * This page will later on include things like edit, delete, like, watch, comments etc, but you can skip this for `2.2.3`.
 
-### 2.3. Milestone 3 - Thread Interactions (10%)
+### 2.3. Milestone 3 - Thread Interactions
 
 Milestone 3 focuses on how to interact with threads once they've been made
 
@@ -114,7 +102,7 @@ Milestone 3 focuses on how to interact with threads once they've been made
 * If the thread is currently watched by this user, the button should imply visually that clicking it will unwatch the thread. If the thread is currently not watched by this user, the button should visually imply clicking it will cause it to be watched.
 * Any watching or unwatching should reflect a change in the UI immediately.
 
-### 2.4. Milestone 4 - Comments (15%)
+### 2.4. Milestone 4 - Comments
 
 Milestone 4 focuses on commenting features once the threads have been made.
 
@@ -157,7 +145,7 @@ Milestone 4 focuses on commenting features once the threads have been made.
 * When the "like" text/button is pressed, the comment moves into a liked state via `PUT /comment/like`. After this change, the liked counter should change.
 * When the "unlike" text/button is pressed, the comment moves into a not-liked state via `PUT /comment/like`. After this change, the liked counter should change.
 
-### 2.5. Milestone 5 - Handling Users (10%)
+### 2.5. Milestone 5 - Handling Users
 
 Milestone 5 focuses predominately on user profiles and admins manage other admin permissions.
 
@@ -184,7 +172,7 @@ Milestone 5 focuses predominately on user profiles and admins manage other admin
 * The option selected in the dropdown by default on the page should reflect the user's current admin status.
 * Underneath the drop down, an "Update" button should exist, that when clicked, updates the user to that permission level.
 
-### 2.6. Milestone 6 - Challenge Components (`advanced`) (5%)
+### 2.6. Milestone 6 - Challenge Components (`advanced`)
 
 #### 2.6.1. Infinite Scroll 
 * Instead of pagination, use an infinitely scroll through a thread. For infinite scroll to be properly implemented you need to progressively load threads as you scroll. 
@@ -201,7 +189,7 @@ Milestone 5 focuses predominately on user profiles and admins manage other admin
 
 _No course assistance in lectures will be provided for this component, you should do your own research as to how to implement this. There are extensive resources online._
 
-### 2.7. Milestone 7 - Very Challenge Components (`advanced *= 2`) (5%)
+### 2.7. Milestone 7 - Very Challenge Components (`advanced *= 2`)
 
 #### 2.7.1. Static feed offline access
 * Users can access the most recent feed they've loaded even without an internet connection.
