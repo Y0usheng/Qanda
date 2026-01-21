@@ -475,7 +475,9 @@ function render_edit_thread_screen(thread) {
     main.appendChild(form);
 }
 
-function handle_thread_edit(event, threadId) {
+
+
+async function handle_thread_edit(event, threadId) {
     event.preventDefault();
 
     const title = document.getElementById('editThreadTitle').value;
@@ -483,151 +485,82 @@ function handle_thread_edit(event, threadId) {
     const isPublic = document.getElementById('editThreadPublic').checked;
     const lock = document.getElementById('editThreadLocked').checked;
 
-    const token = localStorage.getItem('authToken');
+    try {
+        await api.thread.update(threadId, title, content, isPublic, lock);
 
-    fetch(`http://localhost:${BACKEND_PORT}/thread`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ id: threadId, title, content, isPublic, lock }),
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Thread update error: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(updatedThread => {
-            console.log('Thread updated successfully', updatedThread);
-            alert('Thread updated successfully!');
-            return get_thread_details(threadId);
-        })
-        .then(fullThread => {
-            render_single_thread(fullThread);
-        })
-        .catch(error => {
-            console.error('Thread update error', error);
-            error_popup_window('Thread update error: ' + error.message);
-        });
+        console.log('Thread updated successfully');
+        alert('Thread updated successfully!');
+
+        const fullThread = await get_thread_details(threadId);
+        render_single_thread(fullThread);
+
+    } catch (error) {
+        console.error('Thread update error', error);
+        error_popup_window('Thread update error: ' + error.message);
+    }
 }
 
-
 // ------------ 2.3.2. Deleting a thread ------------ 
-function handle_thread_delete(threadId) {
-    const token = localStorage.getItem('authToken');
-
+async function handle_thread_delete(threadId) {
     if (!confirm('Are you sure you want to delete this thread?')) {
         return;
     }
 
-    fetch(`http://localhost:${BACKEND_PORT}/thread`, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ id: threadId }),
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Thread delete error: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(() => {
-            console.log('Thread deleted successfully');
-            alert('Thread deleted successfully!');
-            redirect_to_latest_thread();
-        })
-        .catch(error => {
-            console.error('Thread delete error', error);
-            error_popup_window('Thread delete error: ' + error.message);
-        });
+    try {
+        await api.thread.delete(threadId);
+        console.log('Thread deleted successfully');
+        alert('Thread deleted successfully!');
+        redirect_to_latest_thread();
+    }
+    catch (error) {
+        console.error('Thread delete error', error);
+        error_popup_window('Thread delete error: ' + error.message);
+    };
 }
 
-function redirect_to_latest_thread() {
-    const token = localStorage.getItem('authToken');
-
-    fetch(`http://localhost:${BACKEND_PORT}/threads?start=0`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-    })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Data received from server:', data, 'Show me 0', data[0]);
-            if (Array.isArray(data) && data.length > 0) {
-                return get_thread_details(data[0]);
-            } else {
-                alert('No threads available.');
-                render_dashboard();
-            }
-        })
-        .then(fullThread => {
+async function redirect_to_latest_thread() {
+    try {
+        const data = await api.thread.getList(0);
+        console.log('Data received from server:', data, 'Show me 0', data[0]);
+        if (Array.isArray(data) && data.length > 0) {
+            const fullThread = await get_thread_details(data[0]);
             render_single_thread(fullThread);
-        })
-        .catch(error => {
-            console.error('Failed to load threads', error);
-            error_popup_window('Failed to load threads: ' + error.message);
-        });
+        } else {
+            alert('No threads available.');
+            render_dashboard();
+        }
+    } catch (error) {
+        console.error('Failed to load threads', error);
+        error_popup_window('Failed to load threads: ' + error.message);
+    };
 }
 
-// ------------ 2.3.3. Liking a thread ------------ 
-function handle_thread_like(threadId, isLike) {
-    const token = localStorage.getItem('authToken');
-    console.log(threadId, isLike)
-    fetch(`http://localhost:${BACKEND_PORT}/thread/like`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ "id": threadId, "turnon": isLike }),
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Thread ${isLike ? 'like' : 'unlike'} error: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(() => {
-            console.log('Thread updated successfully after like/unlike');
-            return get_thread_details(threadId);
-        })
-        .then(updatedThread => {
-            console.log('updatedThread', updatedThread)
-            render_single_thread(updatedThread);
-        })
-        .catch(error => {
-            console.error('Thread like/unlike error', error);
-            error_popup_window('Thread like/unlike error: ' + error.message);
-        });
+// ------------ 2.3.3. Liking a thread ------------ xw
+async function handle_thread_like(threadId, isLike) {
+    try {
+        await api.thread.like(threadId, isLike);
+
+        const updatedThread = await get_thread_details(threadId);
+        render_single_thread(updatedThread);
+
+    } catch (error) {
+        console.error('Thread like/unlike error', error);
+        error_popup_window('Thread like/unlike error: ' + error.message);
+    }
 }
 
 // ------------ 2.3.4. Watching a thread ------------ 
-function handle_thread_watch(threadId, isWatch) {
-    const token = localStorage.getItem('authToken');
-    fetch(`http://localhost:${BACKEND_PORT}/thread/watch`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ "id": threadId, "turnon": isWatch }),
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Thread ${isWatch ? 'watch' : 'unwatch'} error: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(() => {
-            console.log('Thread updated successfully after watch/unwatch');
-            return get_thread_details(threadId);
-        })
-        .then(updatedThread => {
-            render_single_thread(updatedThread);
-        })
-        .catch(error => {
-            console.error('Thread watch/unwatch error', error);
-            error_popup_window('Thread watch/unwatch error: ' + error.message);
-        });
+async function handle_thread_watch(threadId, isWatch) {
+    try {
+        await api.thread.watch(threadId, isWatch);
+
+        const updatedThread = await get_thread_details(threadId);
+        render_single_thread(updatedThread);
+
+    } catch (error) {
+        console.error('Thread watch/unwatch error', error);
+        error_popup_window('Thread watch/unwatch error: ' + error.message);
+    };
 }
 
 ///////////////////////////////////////////////////////////////////////////
