@@ -1,7 +1,7 @@
 import { BACKEND_PORT } from './config.js';
 // A helper you may want to use when uploading new images to the server.
 import { fileToDataUrl } from './helpers.js';
-// 引入新的 api
+// api file
 import { api } from './api.js';
 
 function create_div(labelText, type, id) {
@@ -133,7 +133,7 @@ function render_register_form() {
     main.appendChild(form);
 }
 
-function handle_register(event) {
+async function handle_register(event) {
     event.preventDefault();
 
     const email = document.getElementById('registerEmail').value;
@@ -146,49 +146,24 @@ function handle_register(event) {
         return;
     }
 
-    fetch(`http://localhost:${BACKEND_PORT}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-        body: JSON.stringify({ email, name, password })
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Registration error: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            localStorage.setItem('authToken', data.token);
-            localStorage.setItem('userId', data.userId);
+    try {
+        const data = await api.auth.register(email, name, password);
 
-            const token = localStorage.getItem('authToken');
-            const userId = localStorage.getItem('userId');
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('userId', data.userId);
 
-            return fetch(`http://localhost:${BACKEND_PORT}/user?userId=${userId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json; charset=UTF-8',
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch user details: HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(userDetails => {
-            const userRole = userDetails.admin ? 'admin' : 'user';
-            localStorage.setItem('userRole', userRole);
+        const userDetails = await api.user.get(data.userId);
 
-            console.log('userRole', userDetails.admin, userRole);
-            alert('Registration successful!');
-            console.log('Registration successful');
-            render_dashboard();
-        })
-        .catch(error => {
-            console.error('Registration error', error);
-            error_popup_window('Registration error: ' + error.message);
-        });
+        const userRole = userDetails.admin ? 'admin' : 'user';
+        localStorage.setItem('userRole', userRole);
+
+        alert('Registration successful!');
+        render_dashboard();
+
+    } catch (error) {
+        console.error('Registration error', error);
+        error_popup_window('Registration error: ' + error.message);
+    }
 }
 
 // ------------ 2.1.3. Error Popup ------------ 
@@ -304,101 +279,62 @@ function create_thread() {
     main.appendChild(form);
 }
 
-function handle_thread_submission(event) {
+async function handle_thread_submission(event) {
     event.preventDefault();
     const title = document.getElementById('threadTitle').value;
     const content = document.getElementById('threadContent').value;
     const isPublic = document.getElementById('threadPublic').checked;
 
-    const token = localStorage.getItem('authToken');
-    console.log('Retrieved token:', token);
+    try {
+        const data = await api.thread.create(title, isPublic, content);
 
-    fetch(`http://localhost:${BACKEND_PORT}/thread`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title, isPublic, content })
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Thread creation error: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(data => {
-            if (data) {
-                console.log('Thread created successfully', data, data.id);
-                alert('Thread created successfully!');
-                return get_thread_details(data.id);
-            } else {
-                throw new Error('Invalid thread data received');
-            }
-        })
-        .then(fullThread => {
+        if (data && data.id) {
+            console.log('Thread created successfully', data.id);
+            alert('Thread created successfully!');
+
+            const fullThread = await get_thread_details(data.id);
+
             render_single_thread(fullThread);
-        })
-        .catch(error => {
-            console.error('Thread creation error', error);
-            error_popup_window('Thread creation error: ' + error.message);
-        });
+        } else {
+            throw new Error('Invalid thread data received');
+        }
+    } catch (error) {
+        console.error('Thread creation error', error);
+        error_popup_window(error.message);
+    }
 }
-
 
 // ------------ 2.2.2. Getting a List of Threads ------------ 
-function load_threads(threadsContainer, StartIndex = 0) {
-    const token = localStorage.getItem('authToken');
-    console.log('Retrieved token:', token);
-
-    fetch(`http://localhost:${BACKEND_PORT}/threads?start=${StartIndex}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-    })
-        .then(response => response.json())
-        .then(data => {
-            data.forEach(thread => {
-                const threadElement = create_thread_div(thread);
-                threadsContainer.appendChild(threadElement);
-            });
-            if (data.length === 5) {
-                const moreButton = document.createElement('button');
-                moreButton.textContent = 'More';
-                moreButton.onclick = () => {
-                    load_threads(threadsContainer, StartIndex + 5);
-                    moreButton.remove();
-                };
-                threadsContainer.appendChild(moreButton);
-            }
-        })
-        .catch(error => {
-            console.error('Failed to load threads', error);
-            error_popup_window('Failed to load threads: ' + error.message);
+async function load_threads(threadsContainer, StartIndex = 0) {
+    try {
+        const data = await api.thread.list(StartIndex);
+        data.forEach(thread => {
+            const threadElement = create_thread_div(thread);
+            threadsContainer.appendChild(threadElement);
         });
+        if (data.length === 5) {
+            const moreButton = document.createElement('button');
+            moreButton.textContent = 'More';
+            moreButton.onclick = () => {
+                load_threads(threadsContainer, StartIndex + 5);
+                moreButton.remove();
+            };
+            threadsContainer.appendChild(moreButton);
+        }
+    } catch (error) {
+        console.error('Failed to load threads', error);
+        error_popup_window('Failed to load threads: ' + error.message);
+    };
 }
 
 
-function get_thread_details(threadId) {
-    const token = localStorage.getItem('authToken');
-
-    return fetch(`http://localhost:${BACKEND_PORT}/thread?id=${threadId}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch thread details: HTTP error ${response.status}`);
-            }
-            return response.json();
-        })
-        .catch(error => {
-            console.error('Failed to fetch thread details:', error);
-            throw error;
-        });
+async function get_thread_details(threadId) {
+    try {
+        return await api.thread.get(threadId);
+    } catch (error) {
+        console.error('Failed to fetch thread details:', error);
+        throw error;
+    }
 }
 
 
