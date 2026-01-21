@@ -1,7 +1,7 @@
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import AsyncLock from 'async-lock';
-import { InputError, AccessError, } from './error';
+import { InputError, AccessError, } from './error.js';
 
 const lock = new AsyncLock();
 
@@ -144,7 +144,7 @@ export const assertViewPermissionOfThread = (userId, threadId) => {
     throw new AccessError(`Authorised user ${userId} is not the creator of this thread ${threadId}`);
   }
 };
-  
+
 export const assertUnlockedThread = (threadId) => {
   if (threads[threadId].lock) {
     throw new InputError(`This thread ${threadId} is locked`);
@@ -166,7 +166,7 @@ export const threadsGet = (authUserId, start) => dataLock((resolve, reject) => {
   const allThreads = Object.keys(threads).map(pid => threads[pid]);
 
   const relevantThreads = allThreads.filter(t => t.isPublic || users[authUserId].admin || t.creatorId == authUserId);
-    
+
   relevantThreads.sort((a, b) => (a.createdAt < b.createdAt) ? 1 : -1)
   const nextThreads = relevantThreads.slice(start, start + 5);
 
@@ -185,7 +185,7 @@ export const threadGet = (authUserId, threadId) => dataLock((resolve, reject) =>
 });
 
 export const threadNew = (authUserId, title, isPublic, content) => dataLock((resolve, reject) => {
-  if (title === undefined || content === undefined || isPublic === undefined || ![true,false].includes(isPublic)) {
+  if (title === undefined || content === undefined || isPublic === undefined || ![true, false].includes(isPublic)) {
     console.log(`Input is: title(${title}), isPublic(${isPublic}), content(${content})`);
     throw new InputError(`Please enter all relevant fields, you entered title(${title}), isPublic(${isPublic}), content(${content})`);
   }
