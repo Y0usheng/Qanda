@@ -819,19 +819,9 @@ function create_user_name_element(userId) {
     userNameElement.style.cursor = 'pointer';
     userNameElement.className = 'username';
     userNameElement.href = '#';
+    userNameElement.textContent = 'Loading...';
 
-    const token = localStorage.getItem('authToken');
-    fetch(`http://localhost:${BACKEND_PORT}/user?userId=${userId}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to fetch user details: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
+    api.user.get(userId)
         .then(user => {
             userNameElement.textContent = user.name && user.name.trim() !== '' ? user.name : `User ${userId}`;
             userNameElement.addEventListener('click', (event) => {
@@ -848,28 +838,15 @@ function create_user_name_element(userId) {
 }
 
 
-function render_profile(userId) {
-    const token = localStorage.getItem('authToken');
-
-    fetch(`http://localhost:${BACKEND_PORT}/user?userId=${userId}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to fetch user details: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(user => {
-            display_user_profile(user);
-            load_user_threads(userId);
-        })
-        .catch(error => {
-            console.error('Failed to fetch user profile', error);
-            error_popup_window('Failed to fetch user profile: ' + error.message);
-        });
+async function render_profile(userId) {
+    try {
+        const user = await api.user.get(userId);
+        display_user_profile(user);
+        load_user_threads(userId);
+    } catch (error) {
+        console.error('Failed to fetch user profile', error);
+        error_popup_window('Failed to fetch user profile: ' + error.message);
+    };
 }
 
 function display_user_profile(user) {
@@ -955,77 +932,51 @@ function display_user_profile(user) {
     main.appendChild(backButton);
 }
 
-function load_user_threads(userId) {
-    const token = localStorage.getItem('authToken');
-    let startIndex = 0;
+async function load_user_threads(userId) {
+    try {
+        const threadIds = await api.thread.getList(0);
 
-    // First, fetch all thread IDs
-    fetch(`http://localhost:${BACKEND_PORT}/threads?start=${startIndex}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to load thread IDs: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(threadIds => {
-            const threadDetailPromises = threadIds.map(threadId => {
-                return fetch(`http://localhost:${BACKEND_PORT}/thread?id=${threadId}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json; charset=UTF-8',
-                        Authorization: `Bearer ${token}`,
-                    },
-                }).then(response => {
-                    if (!response.ok) throw new Error(`Failed to load thread details: HTTP error! status: ${response.status}`);
-                    return response.json();
-                });
-            });
+        const threadDetailPromises = threadIds.map(threadId => api.thread.get(threadId));
+        const allThreads = await Promise.all(threadDetailPromises);
 
-            return Promise.all(threadDetailPromises);
-        })
-        .then(allThreads => {
-            const userThreads = allThreads.filter(thread => thread.creatorId === parseInt(userId));
+        const userThreads = allThreads.filter(thread => thread.creatorId === parseInt(userId));
 
-            const threadsDiv = document.createElement('div');
-            threadsDiv.className = 'threads-box';
+        const main = document.getElementById('main');
+        const threadsDiv = document.createElement('div');
+        threadsDiv.className = 'threads-box';
 
-            const heading = document.createElement('h3');
-            heading.textContent = `${userThreads.length} Threads by User`;
-            threadsDiv.appendChild(heading);
+        const heading = document.createElement('h3');
+        heading.textContent = `${userThreads.length} Threads by User`;
+        threadsDiv.appendChild(heading);
 
-            userThreads.forEach(thread => {
-                const threadElement = document.createElement('div');
-                threadElement.className = 'thread-box';
-                threadElement.style.cursor = 'pointer';
+        userThreads.forEach(thread => {
+            const threadElement = document.createElement('div');
+            threadElement.className = 'thread-box';
+            threadElement.style.cursor = 'pointer';
 
-                const threadTitle = document.createElement('h4');
-                threadTitle.textContent = thread.title;
+            const threadTitle = document.createElement('h4');
+            threadTitle.textContent = thread.title;
 
-                const threadContent = document.createElement('p');
-                threadContent.textContent = thread.content;
+            const threadContent = document.createElement('p');
+            threadContent.textContent = thread.content;
 
-                const threadInfo = document.createElement('p');
-                threadInfo.textContent = `Likes: ${thread.likes.length}`;
+            const threadInfo = document.createElement('p');
+            threadInfo.textContent = `Likes: ${thread.likes.length}`;
 
-                threadElement.appendChild(threadTitle);
-                threadElement.appendChild(threadContent);
-                threadElement.appendChild(threadInfo);
+            threadElement.appendChild(threadTitle);
+            threadElement.appendChild(threadContent);
+            threadElement.appendChild(threadInfo);
 
-                threadElement.addEventListener('click', () => render_single_thread(thread));
+            threadElement.addEventListener('click', () => render_single_thread(thread));
 
-                threadsDiv.appendChild(threadElement);
-            });
-
-            main.appendChild(threadsDiv);
-        })
-        .catch(error => {
-            console.error('Failed to load user threads', error);
-            error_popup_window('Failed to load user threads: ' + error.message);
+            threadsDiv.appendChild(threadElement);
         });
+
+        main.appendChild(threadsDiv);
+    } catch (error) {
+        console.error('Failed to load user threads', error);
+        error_popup_window('Failed to load user threads: ' + error.message);
+    }
 }
 
 // ------------ 2.5.2 Viewing your own profile ------------ 
@@ -1069,12 +1020,9 @@ function render_update_profile_form() {
     main.appendChild(form);
 }
 
-function handle_profile_update(event) {
+async function handle_profile_update(event) {
     event.preventDefault();
-
-    const token = localStorage.getItem('authToken');
-    const userId = localStorage.getItem('userId');
-
+    const userId = localStorage.getItem('userId')
     const email = document.getElementById('updateEmail').value;
     const name = document.getElementById('updateName').value;
     const password = document.getElementById('updatePassword').value;
@@ -1082,19 +1030,25 @@ function handle_profile_update(event) {
 
     let profileData = { email, name, password };
 
-    if (imageFile) {
-        fileToDataUrl(imageFile)
-            .then(dataUrl => {
+    try {
+        if (imageFile) {
+            try {
+                const dataUrl = await fileToDataUrl(imageFile);
                 profileData.image = dataUrl;
-                return update_profile(userId, profileData, token);
-            })
-            .catch(error => {
-                console.error('Failed to convert image to data URL:', error);
-                error_popup_window('Failed to process image. Please try again.');
-            });
-    } else {
-        update_profile(userId, profileData, token);
-    }
+            } catch (err) {
+                throw new Error('Failed to process image file.');
+            }
+        }
+
+        await api.user.update(profileData);
+        console.log('Profile updated successfully');
+        alert('Profile updated successfully!');
+
+        render_profile(userId);
+    } catch (error) {
+        console.error('Failed to convert image to data URL:', error);
+        error_popup_window('Failed to process image. Please try again.');
+    };
 }
 
 function update_profile(userId, profileData, token) {
@@ -1122,31 +1076,18 @@ function update_profile(userId, profileData, token) {
 }
 
 // ------------ 2.5.4. Updating someone as admin ------------ 
-function handle_update_admin_status(userId) {
-    const token = localStorage.getItem('authToken');
+async function handle_update_admin_status(userId) {
     const newRole = document.getElementById('adminStatusSelect').value;
     const isAdmin = newRole === 'admin';
     console.log(isAdmin, newRole)
 
-    fetch(`http://localhost:${BACKEND_PORT}/user/admin`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ "userId": parseInt(userId), "turnon": isAdmin })
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to update user role: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(() => {
-            console.log('User role updated successfully');
-            alert('User role updated successfully!');
-            render_profile(userId);
-        })
-        .catch(error => {
-            console.error('Failed to update user role', error);
-            error_popup_window('Failed to update user role: ' + error.message);
-        });
+    try {
+        await api.user.setAdmin(userId, isAdmin);
+        console.log('User role updated successfully');
+        alert('User role updated successfully!');
+        render_profile(userId);
+    } catch (error) {
+        console.error('Failed to update user role', error);
+        error_popup_window('Failed to update user role: ' + error.message);
+    }
 }
