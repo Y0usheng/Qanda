@@ -14,18 +14,45 @@
  * @return {Promise<string>} Promise which resolves to the file as a data url.
  */
 export function fileToDataUrl(file) {
-    const validFileTypes = [ 'image/jpeg', 'image/png', 'image/jpg' ]
+    const validFileTypes = ['image/jpeg', 'image/png', 'image/jpg']
     const valid = validFileTypes.find(type => type === file.type);
     // Bad data, let's walk away.
     if (!valid) {
         throw Error('provided file is not a png, jpg or jpeg image.');
     }
-    
+
     const reader = new FileReader();
-    const dataUrlPromise = new Promise((resolve,reject) => {
+    const dataUrlPromise = new Promise((resolve, reject) => {
         reader.onerror = reject;
         reader.onload = () => resolve(reader.result);
     });
     reader.readAsDataURL(file);
     return dataUrlPromise;
+}
+
+/**
+ * Show toast notification
+ * @param {string} message - Notification message
+ * @param {string} type - 'success' | 'error' | 'info'
+ */
+export function showNotification(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        if (container.contains(toast)) {
+            container.removeChild(toast);
+        }
+    }, 3000);
 }

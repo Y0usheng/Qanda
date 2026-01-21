@@ -1,6 +1,6 @@
 import { BACKEND_PORT } from './config.js';
 // A helper you may want to use when uploading new images to the server.
-import { fileToDataUrl } from './helpers.js';
+import { fileToDataUrl, showNotification } from './helpers.js';
 // api file
 import { api } from './api.js';
 
@@ -100,11 +100,11 @@ async function handle_login(event) {
         const userRole = userDetails.admin ? 'admin' : 'user';
         localStorage.setItem('userRole', userRole);
         console.log('Login successful!', userDetails);
-        alert('Login successful!');
+        showNotification('Login successful!', 'success');
         render_dashboard();
     } catch (error) {
         console.error('Login failed', error);
-        error_popup_window('Invalid email or password.');
+        showNotification('Invalid email or password.', 'error');
     }
 }
 
@@ -142,7 +142,7 @@ async function handle_register(event) {
     const confirmPassword = document.getElementById('confirmPassword').value;
 
     if (password !== confirmPassword) {
-        error_popup_window('Passwords do not match.');
+        showNotification('Passwords do not match.', 'error');
         return;
     }
 
@@ -157,58 +157,14 @@ async function handle_register(event) {
         const userRole = userDetails.admin ? 'admin' : 'user';
         localStorage.setItem('userRole', userRole);
 
-        alert('Registration successful!');
+        showNotification('Registration successful!', 'success');
         render_dashboard();
 
     } catch (error) {
         console.error('Registration error', error);
-        error_popup_window('Registration error: ' + error.message);
+        showNotification('Registration error: ' + error.message, 'error');
     }
 }
-
-// ------------ 2.1.3. Error Popup ------------ 
-function error_popup_window(message) {
-    let errorPopup = document.getElementById('errorPopup');
-    if (!errorPopup) {
-        errorPopup = document.createElement('div');
-        errorPopup.id = 'errorPopup';
-        errorPopup.style.position = 'fixed';
-        errorPopup.style.left = '50%';
-        errorPopup.style.top = '50%';
-        errorPopup.style.transform = 'translate(-50%, -50%)';
-        errorPopup.style.backgroundColor = 'white';
-        errorPopup.style.border = '1px solid red';
-        errorPopup.style.padding = '20px';
-        errorPopup.style.zIndex = '1000';
-        errorPopup.style.borderRadius = '10px';
-        errorPopup.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-
-        const messageDiv = document.createElement('div');
-        messageDiv.id = 'errorMessage';
-        errorPopup.appendChild(messageDiv);
-
-        const closeButton = document.createElement('button');
-        closeButton.textContent = 'X';
-        closeButton.style.position = 'absolute';
-        closeButton.style.top = '5px';
-        closeButton.style.right = '10px';
-        closeButton.style.border = 'none';
-        closeButton.style.background = 'none';
-        closeButton.style.cursor = 'pointer';
-        closeButton.style.fontSize = '16px';
-        closeButton.style.fontWeight = 'bold';
-        closeButton.onclick = function () {
-            errorPopup.style.display = 'none';
-        };
-        errorPopup.appendChild(closeButton);
-
-        document.body.appendChild(errorPopup);
-    }
-
-    document.getElementById('errorMessage').textContent = message;
-    errorPopup.style.display = 'block';
-}
-
 
 // ------------ 2.1.4. Dashboard ------------ 
 function render_dashboard() {
@@ -290,7 +246,7 @@ async function handle_thread_submission(event) {
 
         if (data && data.id) {
             console.log('Thread created successfully', data.id);
-            alert('Thread created successfully!');
+            showNotification('Thread created successfully!', 'success');
 
             const fullThread = await get_thread_details(data.id);
 
@@ -300,7 +256,7 @@ async function handle_thread_submission(event) {
         }
     } catch (error) {
         console.error('Thread creation error', error);
-        error_popup_window(error.message);
+        showNotification(error.message || 'Error creating thread', 'error');
     }
 }
 
@@ -323,7 +279,7 @@ async function load_threads(threadsContainer, StartIndex = 0) {
         }
     } catch (error) {
         console.error('Failed to load threads', error);
-        error_popup_window('Failed to load threads: ' + error.message);
+        showNotification('Failed to load threads: ' + error.message, 'error');
     };
 }
 
@@ -489,14 +445,14 @@ async function handle_thread_edit(event, threadId) {
         await api.thread.update(threadId, title, content, isPublic, lock);
 
         console.log('Thread updated successfully');
-        alert('Thread updated successfully!');
+        showNotification('Thread updated successfully!', 'success');
 
         const fullThread = await get_thread_details(threadId);
         render_single_thread(fullThread);
 
     } catch (error) {
         console.error('Thread update error', error);
-        error_popup_window('Thread update error: ' + error.message);
+        showNotification('Thread update error: ' + error.message, 'error');
     }
 }
 
@@ -509,12 +465,12 @@ async function handle_thread_delete(threadId) {
     try {
         await api.thread.delete(threadId);
         console.log('Thread deleted successfully');
-        alert('Thread deleted successfully!');
+        showNotification('Thread deleted successfully!', 'success');
         redirect_to_latest_thread();
     }
     catch (error) {
         console.error('Thread delete error', error);
-        error_popup_window('Thread delete error: ' + error.message);
+        showNotification('Thread delete error: ' + error.message, 'error');
     };
 }
 
@@ -526,12 +482,12 @@ async function redirect_to_latest_thread() {
             const fullThread = await get_thread_details(data[0]);
             render_single_thread(fullThread);
         } else {
-            alert('No threads available.');
+            showNotification('No threads available.', 'info');
             render_dashboard();
         }
     } catch (error) {
         console.error('Failed to load threads', error);
-        error_popup_window('Failed to load threads: ' + error.message);
+        showNotification('Failed to load threads: ' + error.message, 'error');
     };
 }
 
@@ -545,7 +501,7 @@ async function handle_thread_like(threadId, isLike) {
 
     } catch (error) {
         console.error('Thread like/unlike error', error);
-        error_popup_window('Thread like/unlike error: ' + error.message);
+        showNotification('Thread like/unlike error: ' + error.message, 'error');
     }
 }
 
@@ -559,7 +515,7 @@ async function handle_thread_watch(threadId, isWatch) {
 
     } catch (error) {
         console.error('Thread watch/unwatch error', error);
-        error_popup_window('Thread watch/unwatch error: ' + error.message);
+        showNotification('Thread watch/unwatch error: ' + error.message, 'error');
     };
 }
 
@@ -602,7 +558,7 @@ async function load_comments(threadId) {
         }
     } catch (error) {
         console.error('Failed to load comments', error);
-        error_popup_window('Failed to load comments: ' + error.message);
+        showNotification('Failed to load comments: ' + error.message, 'error');
     };
 }
 
@@ -697,7 +653,7 @@ function render_comment_input(container, threadId, parentCommentId) {
 
 async function handle_comment_submission(commentText, threadId, parentCommentId) {
     if (!commentText.trim()) {
-        alert('Comment cannot be empty');
+        showNotification('Comment cannot be empty', 'error');
         return;
     }
 
@@ -709,7 +665,7 @@ async function handle_comment_submission(commentText, threadId, parentCommentId)
         render_single_thread(updatedThread);
     } catch (error) {
         console.error('Failed to post comment', error);
-        error_popup_window('Failed to post comment: ' + error.message);
+        showNotification('Failed to post comment: ' + error.message, 'error');
     };
 }
 
@@ -778,7 +734,7 @@ async function handle_comment_edit(updatedText, commentId, modal, commentDiv) {
         commentDiv.removeChild(modal);
     } catch (error) {
         console.error('Failed to edit comment', error);
-        error_popup_window('Failed to edit comment: ' + error.message);
+        showNotification('Failed to edit comment: ' + error.message, 'error');
     };
 }
 
@@ -793,7 +749,7 @@ async function handle_comment_delete(commentId, commentDiv) {
         commentDiv.parentNode.removeChild(commentDiv);
     } catch (error) {
         console.error('Failed to delete comment', error);
-        error_popup_window('Failed to delete comment: ' + error.message);
+        showNotification('Failed to delete comment: ' + error.message, 'error');
     };
 }
 
@@ -805,7 +761,7 @@ async function handle_comment_like(threadId, commentId, isLike) {
         render_single_thread(updatedThread);
     } catch (error) {
         console.error(`Failed to ${isLike ? 'like' : 'unlike'} comment`, error);
-        error_popup_window(`Failed to ${isLike ? 'like' : 'unlike'} comment: ` + error.message);
+        showNotification(`Failed to ${isLike ? 'like' : 'unlike'} comment: ` + error.message, 'error');
     };
 }
 
@@ -837,7 +793,6 @@ function create_user_name_element(userId) {
     return userNameElement;
 }
 
-
 async function render_profile(userId) {
     try {
         const user = await api.user.get(userId);
@@ -845,7 +800,7 @@ async function render_profile(userId) {
         load_user_threads(userId);
     } catch (error) {
         console.error('Failed to fetch user profile', error);
-        error_popup_window('Failed to fetch user profile: ' + error.message);
+        showNotification('Failed to fetch user profile: ' + error.message, 'error');
     };
 }
 
@@ -975,7 +930,7 @@ async function load_user_threads(userId) {
         main.appendChild(threadsDiv);
     } catch (error) {
         console.error('Failed to load user threads', error);
-        error_popup_window('Failed to load user threads: ' + error.message);
+        showNotification('Failed to load user threads: ' + error.message, 'error');
     }
 }
 
@@ -1042,37 +997,13 @@ async function handle_profile_update(event) {
 
         await api.user.update(profileData);
         console.log('Profile updated successfully');
-        alert('Profile updated successfully!');
+        showNotification('Profile updated successfully!', 'success');
 
         render_profile(userId);
     } catch (error) {
         console.error('Failed to convert image to data URL:', error);
-        error_popup_window('Failed to process image. Please try again.');
+        showNotification('Failed to process image. Please try again.', 'error');
     };
-}
-
-function update_profile(userId, profileData, token) {
-    fetch(`http://localhost:${BACKEND_PORT}/user`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(profileData)
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Profile update error: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(() => {
-            console.log('Profile updated successfully');
-            alert('Profile updated successfully!');
-            render_profile(userId);
-        })
-        .catch(error => {
-            console.error('Profile update error', error);
-            error_popup_window('Profile update error: ' + error.message);
-        });
 }
 
 // ------------ 2.5.4. Updating someone as admin ------------ 
@@ -1084,10 +1015,10 @@ async function handle_update_admin_status(userId) {
     try {
         await api.user.setAdmin(userId, isAdmin);
         console.log('User role updated successfully');
-        alert('User role updated successfully!');
+        showNotification('User role updated successfully!', 'success');
         render_profile(userId);
     } catch (error) {
         console.error('Failed to update user role', error);
-        error_popup_window('Failed to update user role: ' + error.message);
+        showNotification('Failed to update user role: ' + error.message, 'error');
     }
 }
