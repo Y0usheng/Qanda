@@ -568,62 +568,42 @@ async function handle_thread_watch(threadId, isWatch) {
 ///////////////////////////////////////////////////////////////////////////
 
 // ------------ 2.4.1. Showing comments ------------ 
-function load_comments(threadId) {
-    const token = localStorage.getItem('authToken');
-    fetch(`http://localhost:${BACKEND_PORT}/comments?threadId=${threadId}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to load comments: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(comments => {
-            comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+async function load_comments(threadId) {
+    try {
+        const comments = await api.comment.list(threadId);
+        comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
-            const commentsContainer = document.createElement('div');
-            commentsContainer.className = 'comments-container';
+        const commentsContainer = document.createElement('div');
+        commentsContainer.className = 'comments-container';
 
-            const stack = comments.filter(comment => comment.parentCommentId === null).map(comment => ({ comment, indentLevel: 0 }));
-            while (stack.length > 0) {
-                const { comment, indentLevel } = stack.pop();
-                const commentElement = create_comment_element(threadId, comment, indentLevel);
-                commentsContainer.appendChild(commentElement);
+        const stack = comments.filter(comment => comment.parentCommentId === null).map(comment => ({ comment, indentLevel: 0 }));
+        while (stack.length > 0) {
+            const { comment, indentLevel } = stack.pop();
+            const commentElement = create_comment_element(threadId, comment, indentLevel);
+            commentsContainer.appendChild(commentElement);
 
-                const childComments = comments.filter(cmt => cmt.parentCommentId === comment.id);
-                childComments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-                childComments.forEach(childComment => {
-                    stack.push({ comment: childComment, indentLevel: indentLevel + 1 });
-                });
+            const childComments = comments.filter(cmt => cmt.parentCommentId === comment.id);
+            childComments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            childComments.forEach(childComment => {
+                stack.push({ comment: childComment, indentLevel: indentLevel + 1 });
+            });
+        }
+
+        const main = document.getElementById('main');
+        main.appendChild(commentsContainer);
+
+        const thread = await get_thread_details(threadId);
+        if (!thread.lock) {
+            if (comments.length === 0) {
+                render_comment_input(main, threadId, null);
+            } else {
+                render_comment_input(commentsContainer, threadId, null);
             }
-
-            const main = document.getElementById('main');
-            main.appendChild(commentsContainer);
-
-            get_thread_details(threadId)
-                .then(thread => {
-                    console.log(thread);
-                    console.log(thread.lock);
-                    if (!thread.lock) {
-                        if (comments.length === 0) {
-                            render_comment_input(main, threadId, null);
-                        } else {
-                            render_comment_input(commentsContainer, threadId, null);
-                        }
-                    }
-                })
-                .catch(error => {
-                    console.error('Failed to get thread details', error);
-                });
-        })
-        .catch(error => {
-            console.error('Failed to load comments', error);
-            error_popup_window('Failed to load comments: ' + error.message);
-        });
-
+        }
+    } catch (error) {
+        console.error('Failed to load comments', error);
+        error_popup_window('Failed to load comments: ' + error.message);
+    };
 }
 
 function create_comment_element(threadId, comment, indentLevel = 0) {
@@ -715,38 +695,22 @@ function render_comment_input(container, threadId, parentCommentId) {
     container.appendChild(commentInputDiv);
 }
 
-function handle_comment_submission(commentText, threadId, parentCommentId) {
+async function handle_comment_submission(commentText, threadId, parentCommentId) {
     if (!commentText.trim()) {
         alert('Comment cannot be empty');
         return;
     }
 
-    console.log(commentText, threadId, parentCommentId)
+    try {
+        await api.comment.create(commentText, threadId, parentCommentId);
+        console.log('Comment posted successfully');
 
-    const token = localStorage.getItem('authToken');
-    fetch(`http://localhost:${BACKEND_PORT}/comment`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ "content": commentText, "threadId": threadId, "parentCommentId": parentCommentId })
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to post comment: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(() => {
-            console.log('Comment posted successfully');
-            return get_thread_details(threadId);
-        })
-        .then(updatedThread => {
-            render_single_thread(updatedThread);
-        })
-        .catch(error => {
-            console.error('Failed to post comment', error);
-            error_popup_window('Failed to post comment: ' + error.message);
-        });
+        const updatedThread = await get_thread_details(threadId);
+        render_single_thread(updatedThread);
+    } catch (error) {
+        console.error('Failed to post comment', error);
+        error_popup_window('Failed to post comment: ' + error.message);
+    };
 }
 
 function render_reply_modal(commentDiv, threadId, parentCommentId, indentLevel) {
@@ -800,93 +764,49 @@ function render_edit_comment_modal(commentDiv, comment) {
     commentDiv.appendChild(modal);
 }
 
-function handle_comment_edit(updatedText, commentId, modal, commentDiv) {
+async function handle_comment_edit(updatedText, commentId, modal, commentDiv) {
     if (!updatedText.trim()) {
         alert('Comment cannot be empty');
         return;
     }
 
-    const token = localStorage.getItem('authToken');
-    fetch(`http://localhost:${BACKEND_PORT}/comment`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ "id": commentId, "content": updatedText, })
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to edit comment: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(() => {
-            console.log('Comment updated successfully');
-            const commentText = commentDiv.querySelector('p');
-            commentText.textContent = updatedText;
-            commentDiv.removeChild(modal);
-        })
-        .catch(error => {
-            console.error('Failed to edit comment', error);
-            error_popup_window('Failed to edit comment: ' + error.message);
-        });
+    try {
+        await api.comment.update(commentId, updatedText);
+        console.log('Comment updated successfully');
+        const commentText = commentDiv.querySelector('p');
+        commentText.textContent = updatedText;
+        commentDiv.removeChild(modal);
+    } catch (error) {
+        console.error('Failed to edit comment', error);
+        error_popup_window('Failed to edit comment: ' + error.message);
+    };
 }
 
-function handle_comment_delete(commentId, commentDiv) {
-    const token = localStorage.getItem('authToken');
-
+async function handle_comment_delete(commentId, commentDiv) {
     if (!confirm('Are you sure you want to delete this comment?')) {
         return;
     }
 
-    fetch(`http://localhost:${BACKEND_PORT}/comment`, {
-        method: 'DELETE',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ id: commentId })
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to delete comment: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(() => {
-            console.log('Comment deleted successfully');
-            commentDiv.parentNode.removeChild(commentDiv);
-        })
-        .catch(error => {
-            console.error('Failed to delete comment', error);
-            error_popup_window('Failed to delete comment: ' + error.message);
-        });
+    try {
+        await api.comment.delete(commentId);
+        console.log('Comment deleted successfully');
+        commentDiv.parentNode.removeChild(commentDiv);
+    } catch (error) {
+        console.error('Failed to delete comment', error);
+        error_popup_window('Failed to delete comment: ' + error.message);
+    };
 }
 
 // ------------ 2.4.4. Liking a comment ------------ 
-function handle_comment_like(threadId, commentId, isLike) {
-    const token = localStorage.getItem('authToken');
-    fetch(`http://localhost:${BACKEND_PORT}/comment/like`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json; charset=UTF-8',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ "id": commentId, "turnon": isLike })
-    })
-        .then(response => {
-            if (!response.ok) throw new Error(`Failed to ${isLike ? 'like' : 'unlike'} comment: HTTP error! status: ${response.status}`);
-            return response.json();
-        })
-        .then(() => {
-            console.log('Thread updated successfully after like/unlike');
-            return get_thread_details(threadId);
-        })
-        .then(updatedThread => {
-            console.log('updatedThread', updatedThread)
-            render_single_thread(updatedThread);
-        })
-        .catch(error => {
-            console.error(`Failed to ${isLike ? 'like' : 'unlike'} comment`, error);
-            error_popup_window(`Failed to ${isLike ? 'like' : 'unlike'} comment: ` + error.message);
-        });
+async function handle_comment_like(threadId, commentId, isLike) {
+    try {
+        await api.comment.like(commentId, isLike);
+        const updatedThread = await get_thread_details(threadId);
+        render_single_thread(updatedThread);
+    } catch (error) {
+        console.error(`Failed to ${isLike ? 'like' : 'unlike'} comment`, error);
+        error_popup_window(`Failed to ${isLike ? 'like' : 'unlike'} comment: ` + error.message);
+    };
 }
 
 ///////////////////////////////////////////////////////////////////////////
