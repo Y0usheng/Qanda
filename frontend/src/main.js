@@ -263,7 +263,7 @@ async function handle_thread_submission(event) {
 // ------------ 2.2.2. Getting a List of Threads ------------ 
 async function load_threads(threadsContainer, StartIndex = 0) {
     try {
-        const data = await api.thread.list(StartIndex);
+        const data = await api.thread.getList(StartIndex);
         data.forEach(thread => {
             const threadElement = create_thread_div(thread);
             threadsContainer.appendChild(threadElement);
@@ -283,7 +283,6 @@ async function load_threads(threadsContainer, StartIndex = 0) {
     };
 }
 
-
 async function get_thread_details(threadId) {
     try {
         return await api.thread.get(threadId);
@@ -293,10 +292,16 @@ async function get_thread_details(threadId) {
     }
 }
 
-
 function create_thread_div(thread) {
     const threadDiv = document.createElement('div');
     threadDiv.className = 'thread-box';
+
+    const threadId = (typeof thread === 'object') ? (thread.threadId || thread.id) : thread;
+    if (!threadId) {
+        console.error('Invalid thread data encountered:', thread);
+        threadDiv.textContent = 'Error: Invalid thread data';
+        return threadDiv;
+    }
 
     get_thread_details(thread)
         .then(fullThread => {

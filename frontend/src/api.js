@@ -38,14 +38,11 @@ const request = async (path, options = {}) => {
         const response = await fetch(url, config);
         const data = await response.json();
 
-        // 5. 统一错误处理
         if (!response.ok) {
-            // 优先使用后端返回的 error 字段，如果没有则使用状态文本
             throw new Error(data.error || `请求失败: ${response.statusText}`);
         }
         return data;
     } catch (error) {
-        // 这里可以接入统一的日志系统，或者直接抛出给 UI 处理
         console.error('API Error:', error);
         throw error;
     }
