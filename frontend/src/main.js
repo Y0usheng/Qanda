@@ -387,8 +387,17 @@ function render_single_thread(thread) {
         editButton.textContent = 'Edit Thread';
         editButton.style.backgroundColor = '#ffc107';
         editButton.style.color = 'black';
+        editButton.style.marginRight = '10px';
         editButton.onclick = () => render_edit_thread_screen(thread);
         buttonContainer.appendChild(editButton);
+
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete Thread';
+        deleteButton.style.backgroundColor = '#dc3545';
+        deleteButton.style.color = 'white';
+        deleteButton.style.marginRight = '10px';
+        deleteButton.onclick = () => handle_thread_delete(thread.id);
+        buttonContainer.appendChild(deleteButton);
     }
 
     const likeButton = document.createElement('button');
@@ -509,28 +518,11 @@ async function handle_thread_delete(threadId) {
         await api.thread.delete(threadId);
         console.log('Thread deleted successfully');
         showNotification('Thread deleted successfully!', 'success');
-        redirect_to_latest_thread();
+        render_dashboard();
     }
     catch (error) {
         console.error('Thread delete error', error);
         showNotification('Thread delete error: ' + error.message, 'error');
-    };
-}
-
-async function redirect_to_latest_thread() {
-    try {
-        const data = await api.thread.getList(0);
-        console.log('Data received from server:', data, 'Show me 0', data[0]);
-        if (Array.isArray(data) && data.length > 0) {
-            const fullThread = await get_thread_details(data[0]);
-            render_single_thread(fullThread);
-        } else {
-            showNotification('No threads available.', 'info');
-            render_dashboard();
-        }
-    } catch (error) {
-        console.error('Failed to load threads', error);
-        showNotification('Failed to load threads: ' + error.message, 'error');
     };
 }
 
