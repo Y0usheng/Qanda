@@ -241,6 +241,16 @@ async function handle_thread_submission(event) {
     const content = document.getElementById('threadContent').value;
     const isPublic = document.getElementById('threadPublic').checked;
 
+    if (!title.trim()) {
+        showNotification('Thread title cannot be empty', 'error');
+        return;
+    }
+
+    if (!content.trim()) {
+        showNotification('Thread content cannot be empty', 'error');
+        return;
+    }
+
     try {
         const data = await api.thread.create(title, isPublic, content);
 
@@ -463,6 +473,16 @@ async function handle_thread_edit(event, threadId) {
     const content = document.getElementById('editThreadContent').value;
     const isPublic = document.getElementById('editThreadPublic').checked;
     const lock = document.getElementById('editThreadLocked').checked;
+
+    if (!title.trim()) {
+        showNotification('Thread title cannot be empty', 'error');
+        return;
+    }
+
+    if (!content.trim()) {
+        showNotification('Thread content cannot be empty', 'error');
+        return;
+    }
 
     try {
         await api.thread.update(threadId, title, content, isPublic, lock);

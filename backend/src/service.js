@@ -185,7 +185,7 @@ export const threadGet = (authUserId, threadId) => dataLock((resolve, reject) =>
 });
 
 export const threadNew = (authUserId, title, isPublic, content) => dataLock((resolve, reject) => {
-  if (title === undefined || content === undefined || isPublic === undefined || ![true, false].includes(isPublic)) {
+  if (title === undefined || title.trim() === '' || content === undefined || content.trim() === '' || isPublic === undefined || ![true, false].includes(isPublic)) {
     console.log(`Input is: title(${title}), isPublic(${isPublic}), content(${content})`);
     throw new InputError(`Please enter all relevant fields, you entered title(${title}), isPublic(${isPublic}), content(${content})`);
   }
@@ -205,9 +205,21 @@ export const threadNew = (authUserId, title, isPublic, content) => dataLock((res
 });
 
 export const threadUpdate = (authUserId, threadId, title, isPublic, content, lock) => dataLock((resolve, reject) => {
-  if (title) threads[threadId].title = title;
+  if (title !== undefined) {
+    if (title.trim() === '') {
+      throw new InputError('Thread title cannot be empty');
+    }
+    threads[threadId].title = title;
+  }
+
+  if (content !== undefined) {
+    if (content.trim() === '') {
+      throw new InputError('Thread content cannot be empty');
+    }
+    threads[threadId].content = content;
+  }
+
   if (isPublic !== undefined) threads[threadId].isPublic = isPublic;
-  if (content) threads[threadId].content = content;
   if (lock !== undefined) threads[threadId].lock = lock;
   resolve(threads[threadId]);
 });
