@@ -350,6 +350,11 @@ function render_single_thread(thread) {
     const titleElement = document.createElement('h2');
     titleElement.textContent = `Title: ${thread.title}`;
 
+    const statusElement = document.createElement('p');
+    statusElement.textContent = `Status: ${thread.isPublic ? 'Public' : 'Private'}`;
+    statusElement.style.color = 'grey';
+    statusElement.style.fontSize = '0.8em';
+
     const contentElement = document.createElement('p');
     contentElement.textContent = `Body content: ${thread.content}`;
 
@@ -358,10 +363,23 @@ function render_single_thread(thread) {
 
     thread_single_detail.appendChild(titleElement);
     thread_single_detail.appendChild(contentElement);
+    thread_single_detail.appendChild(statusElement);
     thread_single_detail.appendChild(likesElement);
 
     const buttonContainer = document.createElement('div');
     buttonContainer.className = 'button-container';
+
+    const currentUserId = parseInt(localStorage.getItem('userId'));
+    const currentUserRole = localStorage.getItem('userRole');
+
+    if (currentUserRole === 'admin' || currentUserId === thread.creatorId) {
+        const editButton = document.createElement('button');
+        editButton.textContent = 'Edit Thread';
+        editButton.style.backgroundColor = '#ffc107';
+        editButton.style.color = 'black';
+        editButton.onclick = () => render_edit_thread_screen(thread);
+        buttonContainer.appendChild(editButton);
+    }
 
     const likeButton = document.createElement('button');
     likeButton.id = 'likeButton';
