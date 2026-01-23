@@ -321,6 +321,14 @@ function create_thread_div(thread) {
             const threadTitle = document.createElement('h4');
             threadTitle.textContent = `Title: ${fullThread.title}`;
 
+            const threadTime = document.createElement('span');
+            threadTime.style.fontSize = '0.8em';
+            threadTime.style.color = '#666';
+            threadTime.style.marginLeft = '10px';
+
+            threadTime.textContent = get_time_since_comment(fullThread.createdAt);
+            threadTitle.appendChild(threadTime);
+
             const threadContent = document.createElement('p');
             threadContent.textContent = `Body content: ${fullThread.content}`;
 
@@ -359,6 +367,13 @@ function render_single_thread(thread) {
 
     const titleElement = document.createElement('h2');
     titleElement.textContent = `Title: ${thread.title}`;
+
+    const timeElement = document.createElement('p');
+    timeElement.style.color = 'gray';
+    timeElement.style.fontSize = '0.9em';
+    timeElement.textContent = `Posted: ${get_time_since_comment(thread.createdAt)}`;
+    thread_single_detail.appendChild(titleElement);
+    thread_single_detail.appendChild(timeElement);
 
     const statusElement = document.createElement('p');
     statusElement.textContent = `Status: ${thread.isPublic ? 'Public' : 'Private'}`;
