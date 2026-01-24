@@ -576,6 +576,8 @@ async function handle_thread_watch(threadId, isWatch) {
 // ------------ 2.4.1. Showing comments ------------ 
 async function load_comments(threadId) {
     try {
+        const thread = await get_thread_details(threadId);
+
         const comments = await api.comment.list(threadId);
         comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
@@ -585,7 +587,7 @@ async function load_comments(threadId) {
         const stack = comments.filter(comment => comment.parentCommentId === null).map(comment => ({ comment, indentLevel: 0 }));
         while (stack.length > 0) {
             const { comment, indentLevel } = stack.pop();
-            const commentElement = create_comment_element(threadId, comment, indentLevel);
+            const commentElement = create_comment_element(threadId, comment, indentLevel, thread.lock);
             commentsContainer.appendChild(commentElement);
 
             const childComments = comments.filter(cmt => cmt.parentCommentId === comment.id);
@@ -598,7 +600,6 @@ async function load_comments(threadId) {
         const main = document.getElementById('main');
         main.appendChild(commentsContainer);
 
-        const thread = await get_thread_details(threadId);
         if (!thread.lock) {
             if (comments.length === 0) {
                 render_comment_input(main, threadId, null);
@@ -612,7 +613,7 @@ async function load_comments(threadId) {
     };
 }
 
-function create_comment_element(threadId, comment, indentLevel = 0) {
+function create_comment_element(threadId, comment, indentLevel = 0, isLocked = false) {
     const commentDiv = document.createElement('div');
     commentDiv.className = 'comment';
     commentDiv.style.marginLeft = `${indentLevel * 20}px`;
@@ -629,10 +630,12 @@ function create_comment_element(threadId, comment, indentLevel = 0) {
     const userNameElement = create_user_name_element(comment.creatorId);
     commentDiv.appendChild(userNameElement);
 
-    const replyButton = document.createElement('button');
-    replyButton.textContent = 'Reply';
-    replyButton.onclick = () => render_reply_modal(commentDiv, threadId, comment.id, indentLevel + 1);
-    commentDiv.appendChild(replyButton);
+    if (!isLocked) {
+        const replyButton = document.createElement('button');
+        replyButton.textContent = 'Reply';
+        replyButton.onclick = () => render_reply_modal(commentDiv, threadId, comment.id, indentLevel + 1);
+        commentDiv.appendChild(replyButton);
+    }
 
     const userId = parseInt(localStorage.getItem('userId'));
     const userRole = localStorage.getItem('userRole');

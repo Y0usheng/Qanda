@@ -146,6 +146,7 @@ app.get('/comments', catchErrors(authed(async (req, res, authUserId) => {
 app.post('/comment', catchErrors(authed(async (req, res, authUserId) => {
   const { threadId, parentCommentId, content } = req.body;
   await assertValidThread(threadId);
+  await assertUnlockedThread(threadId);
   await assertValidComment(parentCommentId, true);
   return res.json({
     id: await commentNew(authUserId, threadId, parentCommentId, content),
