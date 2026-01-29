@@ -104,7 +104,6 @@ app.post('/thread', catchErrors(authed(async (req, res, authUserId) => {
 app.put('/thread', catchErrors(authed(async (req, res, authUserId) => {
   const { id, title, isPublic, content, lock } = req.body;
   await assertValidThread(id);
-  await assertUnlockedThread(id);
   await assertEditPermissionOfThread(authUserId, id);
   await threadUpdate(authUserId, id, title, isPublic, content, lock);
   return res.status(200).send({});
