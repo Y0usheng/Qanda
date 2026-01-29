@@ -2,34 +2,25 @@ import { BACKEND_PORT } from './config.js';
 
 const BASE_URL = `http://localhost:${BACKEND_PORT}`;
 
-/**
- * 内部通用的 fetch 包装函数
- * 负责统一处理 Token、Headers 和 错误检查
- */
 const request = async (path, options = {}) => {
-    // 1. 准备 URL
     const url = `${BASE_URL}${path}`;
 
-    // 2. 准备 Headers (自动注入 Content-Type)
     const headers = {
         'Content-Type': 'application/json',
         ...options.headers,
     };
 
-    // 3. 自动注入 Token (如果有的话)
     const token = localStorage.getItem('authToken');
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // 4. 组装 Fetch 配置
     const config = {
         method: options.method || 'GET',
         headers,
         ...options,
     };
 
-    // 自动序列化 Body
     if (config.body && typeof config.body !== 'string') {
         config.body = JSON.stringify(config.body);
     }
@@ -48,9 +39,6 @@ const request = async (path, options = {}) => {
     }
 };
 
-/**
- * 导出的 API 对象，按模块分类
- */
 export const api = {
     auth: {
         login: (email, password) =>
@@ -63,10 +51,8 @@ export const api = {
     user: {
         get: (userId) => request(`/user?userId=${userId}`),
 
-        // 更新个人资料
         update: (data) => request('/user', { method: 'PUT', body: data }),
 
-        // 更新用户权限 (Admin only)
         setAdmin: (userId, turnon) =>
             request('/user/admin', { method: 'PUT', body: { userId, turnon } }),
     },
