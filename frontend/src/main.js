@@ -56,10 +56,9 @@ function render_dashboard() {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-//////          2.2. Milestone 2 - Making Threads                    //////
+//////                      Making Threads                           //////
 ///////////////////////////////////////////////////////////////////////////
-
-// ------------ 2.2.1. Making a thread ------------ 
+// ------------ Making a thread ------------ 
 function create_thread() {
     const main = document.getElementById('main');
     clear_element(main);
