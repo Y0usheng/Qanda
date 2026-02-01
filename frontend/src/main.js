@@ -40,7 +40,7 @@ function render_dashboard() {
     });
     actionButtonsDiv.appendChild(viewProfileButton);
     const logoutButton = get_button("Logout", () => {
-        handle_logout(() => { render_login_form(render_dashboard); });
+        handle_logout(() => render_login_form(render_dashboard));
     });
     actionButtonsDiv.appendChild(logoutButton);
 

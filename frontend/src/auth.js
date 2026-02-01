@@ -24,7 +24,7 @@ export function render_login_form(onLoginSuccess) {
     form.appendChild(loginButton);
 
     const registrationButton = get_button("Register");
-    registrationButton.onclick = render_register_form(onLoginSuccess);
+    registrationButton.onclick = () => render_register_form(onLoginSuccess);
     form.appendChild(registrationButton);
 
     main.appendChild(form);
@@ -52,7 +52,7 @@ export function render_register_form(onLoginSuccess) {
     form.appendChild(registerButton);
 
     const backToLoginButton = get_button("Back to Login");
-    backToLoginButton.onclick = render_login_form(onLoginSuccess);
+    backToLoginButton.onclick = () => render_login_form(onLoginSuccess);
     form.appendChild(backToLoginButton);
 
     main.appendChild(form);
