@@ -45,19 +45,6 @@ export function clear_element(element) {
     }
 }
 
-export function create_checkbox(id, labelContent) {
-    const div = document.createElement("div");
-    const label = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = id;
-    label.htmlFor = id;
-    label.appendChild(document.createTextNode(labelContent));
-    label.insertBefore(checkbox, label.firstChild);
-    div.appendChild(label);
-    return div;
-}
-
 export function get_time_since(timestamp) {
     const now = new Date();
     const commentTime = new Date(timestamp);

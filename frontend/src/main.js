@@ -3,10 +3,11 @@ import { fileToDataUrl, showNotification } from './helpers.js';
 // api file
 import { api } from './api.js';
 // utils file
-import { create_div, get_button, create_checkbox, clear_element } from './utils.js';
+import { create_div, get_button, create_user_name_element, clear_element, get_time_since } from './utils.js';
 // auth file
 import { render_login_form, handle_logout } from './auth.js';
-
+// thread file
+import { render_create_thread_screen, load_threads_list, render_single_thread } from './thread.js';
 
 document.addEventListener('DOMContentLoaded', init);
 function init() {
@@ -31,7 +32,7 @@ function render_dashboard() {
     const actionButtonsDiv = document.createElement('div');
     actionButtonsDiv.className = 'action-buttons';
 
-    const createThreadButton = get_button("Create Thread", create_thread);
+    const createThreadButton = get_button("Create Thread", () => render_create_thread_screen(callbacks));
     actionButtonsDiv.appendChild(createThreadButton);
 
     const viewProfileButton = get_button("View Profile", () => {
@@ -49,21 +50,29 @@ function render_dashboard() {
     const threadsContainer = document.createElement('div');
     threadsContainer.className = 'threads-container';
 
-    load_threads(threadsContainer);
+    load_threads_list(threadsContainer, callbacks);
     dashboardContainer.appendChild(threadsContainer);
 
     main.appendChild(dashboardContainer);
 }
 
 ///////////////////////////////////////////////////////////////////////////
+//////                             Threads                           //////
+///////////////////////////////////////////////////////////////////////////
+
+const callbacks = {
+    onBack: render_dashboard,
+    onProfile: (userId) => render_profile(userId),
+    onLoadComments: (threadId, isLocked) => load_comments(threadId, isLocked)
+};
+
+///////////////////////////////////////////////////////////////////////////
 //////          2.4. Milestone 4 - Comments                          //////
 ///////////////////////////////////////////////////////////////////////////
 
 // ------------ 2.4.1. Showing comments ------------ 
-async function load_comments(threadId) {
+async function load_comments(threadId, isLocked) {
     try {
-        const thread = await get_thread_details(threadId);
-
         const comments = await api.comment.list(threadId);
         comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
@@ -73,7 +82,7 @@ async function load_comments(threadId) {
         const stack = comments.filter(comment => comment.parentCommentId === null).map(comment => ({ comment, indentLevel: 0 }));
         while (stack.length > 0) {
             const { comment, indentLevel } = stack.pop();
-            const commentElement = create_comment_element(threadId, comment, indentLevel, thread.lock);
+            const commentElement = create_comment_element(threadId, comment, indentLevel, isLocked);
             commentsContainer.appendChild(commentElement);
 
             const childComments = comments.filter(cmt => cmt.parentCommentId === comment.id);
@@ -110,7 +119,7 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
 
     const timeSinceComment = document.createElement('span');
     timeSinceComment.className = 'time-since-comment';
-    timeSinceComment.textContent = get_time_since_comment(comment.createdAt);
+    timeSinceComment.textContent = get_time_since(comment.createdAt);
     commentDiv.appendChild(timeSinceComment);
 
     const userNameElement = create_user_name_element(comment.creatorId);
@@ -148,28 +157,6 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
     commentDiv.appendChild(likesElement);
 
     return commentDiv;
-}
-
-function get_time_since_comment(timestamp) {
-    const now = new Date();
-    const commentTime = new Date(timestamp);
-    const diffInSeconds = Math.floor((now - commentTime) / 1000);
-
-    if (diffInSeconds < 60) {
-        return 'Just now';
-    } else if (diffInSeconds < 3600) {
-        const minutes = Math.floor(diffInSeconds / 60);
-        return `${minutes} minute(s) ago`;
-    } else if (diffInSeconds < 86400) {
-        const hours = Math.floor(diffInSeconds / 3600);
-        return `${hours} hour(s) ago`;
-    } else if (diffInSeconds < 604800) {
-        const days = Math.floor(diffInSeconds / 86400);
-        return `${days} day(s) ago`;
-    } else {
-        const weeks = Math.floor(diffInSeconds / 604800);
-        return `${weeks} week(s) ago`;
-    }
 }
 
 // ------------ 2.4.2. Making a comment ------------ 

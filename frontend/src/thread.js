@@ -10,10 +10,6 @@ import {
     create_user_name_element
 } from './utils.js';
 
-///////////////////////////////////////////////////////////////////////////
-//////                             Threads                           //////
-///////////////////////////////////////////////////////////////////////////
-
 // ------------ Making a thread ------------ 
 export function render_create_thread_screen(callbacks) {
     const main = document.getElementById('main');
