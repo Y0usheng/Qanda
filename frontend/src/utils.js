@@ -1,4 +1,5 @@
 // frontend/src/utils.js
+import { api } from './api.js';
 
 export function create_div(labelText, type, id) {
     const div = document.createElement("div");

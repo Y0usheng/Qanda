@@ -7,7 +7,7 @@ import {
 } from './utils.js';
 
 // ------------ Showing comments ------------ 
-export async function load_comments(threadId, isLocked, callback) {
+export async function load_comments(threadId, isLocked, callbacks) {
     try {
         const comments = await api.comment.list(threadId);
         comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -18,7 +18,7 @@ export async function load_comments(threadId, isLocked, callback) {
         const stack = comments.filter(comment => comment.parentCommentId === null).map(comment => ({ comment, indentLevel: 0 }));
         while (stack.length > 0) {
             const { comment, indentLevel } = stack.pop();
-            const commentElement = create_comment_element(threadId, comment, indentLevel, isLocked, callback);
+            const commentElement = create_comment_element(threadId, comment, indentLevel, isLocked, callbacks);
             commentsContainer.appendChild(commentElement);
 
             const childComments = comments.filter(cmt => cmt.parentCommentId === comment.id);
@@ -33,9 +33,9 @@ export async function load_comments(threadId, isLocked, callback) {
 
         if (!isLocked) {
             if (comments.length === 0) {
-                render_comment_input(main, threadId, null, callback);
+                render_comment_input(main, threadId, null, callbacks);
             } else {
-                render_comment_input(commentsContainer, threadId, null, callback);
+                render_comment_input(commentsContainer, threadId, null, callbacks);
             }
         }
     } catch (error) {
@@ -44,7 +44,7 @@ export async function load_comments(threadId, isLocked, callback) {
     };
 }
 
-function create_comment_element(threadId, comment, indentLevel = 0, isLocked = false, callback) {
+function create_comment_element(threadId, comment, indentLevel = 0, isLocked = false, callbacks) {
     const commentDiv = document.createElement('div');
     commentDiv.className = 'comment';
     commentDiv.style.marginLeft = `${indentLevel * 20}px`;
@@ -58,13 +58,13 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
     timeSinceComment.textContent = get_time_since(comment.createdAt);
     commentDiv.appendChild(timeSinceComment);
 
-    const userNameElement = create_user_name_element(comment.creatorId, callback.onProfile);
+    const userNameElement = create_user_name_element(comment.creatorId, callbacks.onProfile);
     commentDiv.appendChild(userNameElement);
 
     if (!isLocked) {
         const replyButton = document.createElement('button');
         replyButton.textContent = 'Reply';
-        replyButton.onclick = () => render_reply_modal(commentDiv, threadId, comment.id, indentLevel + 1, callback);
+        replyButton.onclick = () => render_reply_modal(commentDiv, threadId, comment.id, indentLevel + 1, callbacks);
         commentDiv.appendChild(replyButton);
     }
 
@@ -84,7 +84,7 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
 
     const likeButton = document.createElement('button');
     likeButton.textContent = comment.likes.includes(userId) ? 'Unlike' : 'Like';
-    likeButton.onclick = () => handle_comment_like(threadId, comment.id, !comment.likes.includes(userId), callback);
+    likeButton.onclick = () => handle_comment_like(threadId, comment.id, !comment.likes.includes(userId), callbacks);
     commentDiv.appendChild(likeButton);
 
     const likesElement = document.createElement('span');
@@ -96,7 +96,7 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
 }
 
 // ------------ Making a comment ------------ 
-function render_comment_input(container, threadId, parentCommentId, callback) {
+function render_comment_input(container, threadId, parentCommentId, callbacks) {
     const commentInputDiv = document.createElement('div');
     commentInputDiv.className = 'comment-input-div';
 
@@ -107,14 +107,14 @@ function render_comment_input(container, threadId, parentCommentId, callback) {
 
     const commentButton = document.createElement('button');
     commentButton.textContent = 'Comment';
-    commentButton.onclick = () => handle_comment_submission(commentTextarea.value, threadId, parentCommentId, callback);
+    commentButton.onclick = () => handle_comment_submission(commentTextarea.value, threadId, parentCommentId, callbacks);
     commentInputDiv.appendChild(commentButton);
 
     container.appendChild(commentInputDiv);
 }
 
 // ------------ Submit a comment ------------ 
-async function handle_comment_submission(commentText, threadId, parentCommentId, callback) {
+async function handle_comment_submission(commentText, threadId, parentCommentId, callbacks) {
     if (!commentText.trim()) {
         showNotification('Comment cannot be empty', 'error');
         return;
@@ -124,7 +124,7 @@ async function handle_comment_submission(commentText, threadId, parentCommentId,
         await api.comment.create(commentText, threadId, parentCommentId);
         console.log('Comment posted successfully');
 
-        if (callback.onRefresh) callback.onRefresh(threadId);
+        if (callbacks.onRefresh) callbacks.onRefresh(threadId);
     } catch (error) {
         console.error('Failed to post comment', error);
         showNotification('Failed to post comment: ' + error.message, 'error');
@@ -132,7 +132,7 @@ async function handle_comment_submission(commentText, threadId, parentCommentId,
 }
 
 // ------------ Reply a comment ------------ 
-function render_reply_modal(commentDiv, threadId, parentCommentId, indentLevel, callback) {
+function render_reply_modal(commentDiv, threadId, parentCommentId, indentLevel, callbacks) {
     const modal = document.createElement('div');
     modal.className = 'reply-modal';
     modal.style.marginLeft = `${Math.min(indentLevel, 1) * 20}px`;
@@ -145,7 +145,7 @@ function render_reply_modal(commentDiv, threadId, parentCommentId, indentLevel, 
     const commentButton = document.createElement('button');
     commentButton.textContent = 'Comment';
     commentButton.onclick = () => {
-        handle_comment_submission(commentTextarea.value, threadId, parentCommentId, callback);
+        handle_comment_submission(commentTextarea.value, threadId, parentCommentId, callbacks);
         commentDiv.removeChild(modal);
     };
     modal.appendChild(commentButton);
@@ -221,7 +221,7 @@ async function handle_comment_delete(commentId, commentDiv) {
 async function handle_comment_like(threadId, commentId, isLike) {
     try {
         await api.comment.like(commentId, isLike);
-        if (callbacks.onRefresh) callbacks.onRefresh(threadId);
+        if (callbackss.onRefresh) callbackss.onRefresh(threadId);
     } catch (error) {
         console.error(`Failed to ${isLike ? 'like' : 'unlike'} comment`, error);
         showNotification(`Failed to ${isLike ? 'like' : 'unlike'} comment: ` + error.message, 'error');
