@@ -2,6 +2,7 @@ import fs from 'fs';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 
 import { InputError, AccessError, } from './error.js';
 import { BACKEND_PORT } from './config.js';
@@ -44,6 +45,16 @@ const app = express();
 app.use(cors());
 app.use(express.urlencoded({ extended: true, }));
 app.use(express.json({ limit: '50mb', }));
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes 
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { error: 'Too many requests from this IP, please try again later.' },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+app.use(limiter); // Apply the rate limiting middleware to all requests
 
 const catchErrors = fn => async (req, res) => {
   try {

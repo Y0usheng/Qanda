@@ -104,6 +104,13 @@ export const login = (email, password) => dataLock((resolve, reject) => {
 });
 
 export const register = (email, password, name) => dataLock((resolve, reject) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw new InputError(`Email address ${email} is not valid`);
+  }
+  if (password.length < 6) {
+    throw new InputError('Password must be at least 6 characters long');
+  }
   if (getUserIdFromEmail(email) !== undefined) {
     throw new InputError(`Email address ${email} already registered`);
   }
@@ -189,6 +196,12 @@ export const threadNew = (authUserId, title, isPublic, content) => dataLock((res
     console.log(`Input is: title(${title}), isPublic(${isPublic}), content(${content})`);
     throw new InputError(`Please enter all relevant fields, you entered title(${title}), isPublic(${isPublic}), content(${content})`);
   }
+  if (content.length > 2000) {
+    throw new InputError('Thread content cannot exceed 2000 characters');
+  }
+  if (title.length > 100) {
+    throw new InputError('Thread title cannot exceed 100 characters');
+  }
   const newThread = {
     id: newThreadId(),
     creatorId: parseInt(authUserId, 10),
@@ -209,12 +222,19 @@ export const threadUpdate = (authUserId, threadId, title, isPublic, content, loc
     if (title.trim() === '') {
       throw new InputError('Thread title cannot be empty');
     }
+    if (title.length > 100) {
+      throw new InputError('Thread title cannot exceed 100 characters');
+    }
     threads[threadId].title = title;
   }
+
 
   if (content !== undefined) {
     if (content.trim() === '') {
       throw new InputError('Thread content cannot be empty');
+    }
+    if (content.length > 2000) {
+      throw new InputError('Thread content cannot exceed 2000 characters');
     }
     threads[threadId].content = content;
   }
