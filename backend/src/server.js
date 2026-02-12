@@ -3,6 +3,8 @@ import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import { InputError, AccessError, } from './error.js';
 import { BACKEND_PORT } from './config.js';
@@ -40,6 +42,9 @@ import {
   userUpdate,
 } from './service.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
 app.use(cors());
@@ -55,6 +60,8 @@ const limiter = rateLimit({
 });
 
 app.use(limiter); // Apply the rate limiting middleware to all requests
+
+app.use('/storage', express.static(path.join(__dirname, '../public/storage'))); // Serve static files from the 'public/storage' directory when requested with the '/storage' path
 
 const catchErrors = fn => async (req, res) => {
   try {

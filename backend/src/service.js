@@ -1,12 +1,24 @@
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import AsyncLock from 'async-lock';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { InputError, AccessError, } from './error.js';
 
 const lock = new AsyncLock();
 
 const JWT_SECRET = 'donthugmeimscared';
 const DATABASE_FILE = './database.json';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// define the path: backend/public/storage
+const STORAGE_DIR = path.join(__dirname, '../public/storage');
+
+// if the storage directory does not exist, create it
+if (!fs.existsSync(STORAGE_DIR)) {
+  fs.mkdirSync(STORAGE_DIR, { recursive: true });
+}
 
 /***************************************************************
                        State Management
@@ -69,6 +81,36 @@ const generateId = (currentList, max = 999999) => {
     R = randNum(max).toString();
   }
   return parseInt(R);
+};
+
+/**
+ * @param {string} base64String
+ * @returns {string}
+ */
+const saveImage = (base64String) => {
+  if (!base64String || !base64String.startsWith('data:image')) {
+    return base64String;
+  }
+
+  try {
+    const matches = base64String.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      throw new Error('Invalid base64 string');
+    }
+
+    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const data = matches[2];
+
+    const filename = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${ext}`;
+    const filepath = path.join(STORAGE_DIR, filename);
+
+    fs.writeFileSync(filepath, Buffer.from(data, 'base64'));
+
+    return `/storage/${filename}`;
+  } catch (error) {
+    console.error('Save image failed:', error);
+    return null;
+  }
 };
 
 /***************************************************************
@@ -386,7 +428,12 @@ export const userAdminChange = (authUserId, userId, turnon) => dataLock((resolve
 export const userUpdate = (authUserId, email, password, name, image) => dataLock((resolve, reject) => {
   if (name) { users[authUserId].name = name; }
   if (password) { users[authUserId].password = password; }
-  if (image) { users[authUserId].image = image; }
+  if (image) {
+    const imagePath = saveImage(image);
+    if (imagePath) {
+      users[authUserId].image = imagePath;
+    }
+  }
   if (email && getUserIdFromEmail(email) !== undefined) {
     throw new InputError(`Email address ${email} already taken`);
   } else if (email) { users[authUserId].email = email; }
