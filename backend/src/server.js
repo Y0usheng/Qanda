@@ -103,8 +103,11 @@ app.post('/auth/register', catchErrors(async (req, res) => {
 ***************************************************************/
 
 app.get('/threads', catchErrors(authed(async (req, res, authUserId) => {
-  const { start, } = req.query;
-  return res.json(await threadsGet(authUserId, parseInt(start, 10)));
+  const { start, limit, sortBy } = req.query;
+  const startInt = parseInt(start, 10);
+  const limitInt = limit ? parseInt(limit, 10) : undefined;
+
+  return res.json(await threadsGet(authUserId, startInt, limitInt, sortBy));
 })));
 
 app.get('/thread', catchErrors(authed(async (req, res, authUserId) => {

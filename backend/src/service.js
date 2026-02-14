@@ -206,18 +206,28 @@ export const assertEditPermissionOfThread = (userId, threadId) => {
   }
 };
 
-export const threadsGet = (authUserId, start) => dataLock((resolve, reject) => {
+export const threadsGet = (authUserId, start, limit = 10, sortBy = 'recent') => dataLock((resolve, reject) => {
   if (Number.isNaN(start)) {
     throw new InputError(`Invalid start value of ${start}`);
   } else if (start < 0) {
     throw new InputError(`Start value of ${start} cannot be negative`);
   }
+
+  if (Number.isNaN(limit) || limit <= 0) {
+    limit = 10;
+  }
+
   const allThreads = Object.keys(threads).map(pid => threads[pid]);
 
   const relevantThreads = allThreads.filter(t => t.isPublic || users[authUserId].admin || t.creatorId == authUserId);
 
-  relevantThreads.sort((a, b) => (a.createdAt < b.createdAt) ? 1 : -1)
-  const nextThreads = relevantThreads.slice(start, start + 5);
+  if (sortBy === 'likes') {
+    relevantThreads.sort((a, b) => Object.keys(b.likes).length - Object.keys(a.likes).length);
+  } else {
+    relevantThreads.sort((a, b) => (a.createdAt < b.createdAt) ? 1 : -1);
+  }
+
+  const nextThreads = relevantThreads.slice(start, start + limit);
 
   resolve(nextThreads.map(j => parseInt(j.id)));
 });
