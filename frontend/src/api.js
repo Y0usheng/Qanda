@@ -64,7 +64,7 @@ export const api = {
         get: (id) => request(`/thread?id=${id}`),
 
         getList: (start, limit = 10, sortBy = 'recent') =>
-            apiCall.get('threads', { start, limit, sortBy }),
+            request(`/threads?start=${start}&limit=${limit}&sortBy=${sortBy}`),
 
         update: (id, title, content, isPublic, lock) =>
             request('/thread', { method: 'PUT', body: { id, title, content, isPublic, lock } }),

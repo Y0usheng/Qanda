@@ -78,21 +78,24 @@ async function get_thread_details(threadId) {
 }
 
 // ------------ Getting a List of Threads ------------ 
-export async function load_threads_list(container, callbacks, StartIndex = 0) {
+export async function load_threads_list(container, callbacks, StartIndex = 0, limit = 10, sortBy = 'recent') {
     try {
-        const data = await api.thread.getList(StartIndex);
+        const data = await api.thread.getList(StartIndex, limit, sortBy);
         data.forEach(thread => {
             const threadElement = create_thread_div(thread, callbacks);
             container.appendChild(threadElement);
         });
-        if (data.length === 5) {
+        if (data.length === limit) {
             const moreButton = document.createElement('button');
             moreButton.textContent = 'More';
+            moreButton.style.marginTop = '20px';
             moreButton.onclick = () => {
-                load_threads_list(container, callbacks, StartIndex + 5);
+                load_threads_list(container, callbacks, StartIndex + limit, limit, sortBy);
                 moreButton.remove();
             };
             container.appendChild(moreButton);
+        } else if (data.length === 0 && StartIndex === 0) {
+            container.textContent = 'No threads found.';
         }
     } catch (error) {
         console.error('Failed to load threads', error);

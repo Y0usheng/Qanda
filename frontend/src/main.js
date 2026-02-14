@@ -42,11 +42,6 @@ const callbacks = {
     }
 };
 
-
-// ------------ 2.5.2 Viewing your own profile ------------
-// Implement a button in the render_dashboard() function.
-
-
 // ------------ Dashboard ------------ 
 function render_dashboard() {
     const main = document.getElementById('main');
@@ -63,9 +58,10 @@ function render_dashboard() {
 
     const viewProfileButton = get_button("View Profile", () => {
         const userId = localStorage.getItem('userId');
-        render_profile(userId);
+        render_profile(userId, callbacks);
     });
     actionButtonsDiv.appendChild(viewProfileButton);
+
     const logoutButton = get_button("Logout", () => {
         handle_logout(() => render_login_form(render_dashboard));
     });
@@ -73,11 +69,46 @@ function render_dashboard() {
 
     dashboardContainer.appendChild(actionButtonsDiv);
 
+    const controlsDiv = document.createElement('div');
+    controlsDiv.style.margin = '20px 0';
+    controlsDiv.style.display = 'flex';
+    controlsDiv.style.alignItems = 'center';
+    controlsDiv.style.gap = '10px';
+
+    const sortLabel = document.createElement('label');
+    sortLabel.textContent = 'Sort by: ';
+
+    const sortSelect = document.createElement('select');
+    sortSelect.id = 'threadSortSelect';
+
+    // recent options
+    const optionRecent = document.createElement('option');
+    optionRecent.value = 'recent';
+    optionRecent.textContent = 'Most Recent';
+
+    // likes options
+    const optionLikes = document.createElement('option');
+    optionLikes.value = 'likes';
+    optionLikes.textContent = 'Most Likes';
+
+    sortSelect.appendChild(optionRecent);
+    sortSelect.appendChild(optionLikes);
+
+    controlsDiv.appendChild(sortLabel);
+    controlsDiv.appendChild(sortSelect);
+    dashboardContainer.appendChild(controlsDiv);
+
     const threadsContainer = document.createElement('div');
     threadsContainer.className = 'threads-container';
-
-    load_threads_list(threadsContainer, callbacks);
     dashboardContainer.appendChild(threadsContainer);
+
+    load_threads_list(threadsContainer, callbacks, 0, 10, 'recent');
+
+    sortSelect.onchange = (e) => {
+        const selectedSort = e.target.value;
+        clear_element(threadsContainer);
+        load_threads_list(threadsContainer, callbacks, 0, 10, selectedSort);
+    };
 
     main.appendChild(dashboardContainer);
 }
