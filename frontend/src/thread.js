@@ -1,6 +1,7 @@
 // frontend/src/thread.js
 import { api } from './api.js';
 import { showNotification } from './helpers.js';
+import { BACKEND_PORT } from './config.js';
 import {
     clear_element,
     create_div,
@@ -137,9 +138,13 @@ function create_thread_div(thread, callbacks) {
             const threadLikes = document.createElement('p');
             threadLikes.textContent = `Number of likes: ${fullThread.likes.length}`;
 
+            const threadWatches = document.createElement('p');
+            threadWatches.textContent = `Number of watches: ${fullThread.watchees ? fullThread.watchees.length : 0}`;
+
             threadContentDiv.appendChild(threadTitle);
             threadContentDiv.appendChild(threadContent);
             threadContentDiv.appendChild(threadLikes);
+            threadContentDiv.appendChild(threadWatches);
 
             threadDiv.appendChild(threadContentDiv);
 
@@ -166,8 +171,51 @@ export function render_single_thread(thread, callbacks) {
     const thread_single_detail = document.createElement('div');
     thread_single_detail.className = 'single-thread-detail';
 
+    const authorDiv = document.createElement('div');
+    authorDiv.style.display = 'flex';
+    authorDiv.style.alignItems = 'center';
+    authorDiv.style.marginBottom = '20px';
+    authorDiv.style.cursor = 'pointer';
+
+    const avatarImg = document.createElement('img');
+    avatarImg.style.width = '50px';
+    avatarImg.style.height = '50px';
+    avatarImg.style.borderRadius = '50%';
+    avatarImg.style.marginRight = '15px';
+    avatarImg.style.objectFit = 'cover';
+    avatarImg.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><circle cx="25" cy="25" r="25" fill="%23e0e0e0"/></svg>';
+
+    const authorName = document.createElement('h3');
+    authorName.style.margin = '0';
+    authorName.textContent = 'Loading...';
+
+    authorDiv.appendChild(avatarImg);
+    authorDiv.appendChild(authorName);
+
+    api.user.get(thread.creatorId)
+        .then(user => {
+            authorName.textContent = user.name && user.name.trim() !== '' ? user.name : `User ${user.id}`;
+
+            if (user.image && user.image.trim() !== '') {
+                const isBackendStorage = user.image.startsWith('/storage');
+                const backendBaseUrl = `http://localhost:${BACKEND_PORT}`;
+                avatarImg.src = isBackendStorage ? `${backendBaseUrl}${user.image}` : user.image;
+            }
+
+            authorDiv.onclick = () => {
+                if (callbacks.onProfile) callbacks.onProfile(user.id);
+            };
+        })
+        .catch(error => {
+            console.error('Failed to fetch thread author details:', error);
+            authorName.textContent = 'Unknown User';
+        });
+
+    thread_single_detail.appendChild(authorDiv);
+
     const titleElement = document.createElement('h2');
     titleElement.textContent = `Title: ${thread.title}`;
+    titleElement.style.marginTop = '0';
 
     const timeElement = document.createElement('p');
     timeElement.style.color = 'gray';
@@ -188,10 +236,15 @@ export function render_single_thread(thread, callbacks) {
     const likesElement = document.createElement('p');
     likesElement.textContent = `Number of likes: ${thread.likes.length}`;
 
+    const watchesElement = document.createElement('p');
+    watchesElement.textContent = `Number of watches: ${thread.watchees ? thread.watchees.length : 0}`;
+
     thread_single_detail.appendChild(titleElement);
+    thread_single_detail.appendChild(timeElement);
     thread_single_detail.appendChild(contentElement);
     thread_single_detail.appendChild(statusElement);
     thread_single_detail.appendChild(likesElement);
+    thread_single_detail.appendChild(watchesElement);
 
     const buttonContainer = document.createElement('div');
     buttonContainer.className = 'button-container';

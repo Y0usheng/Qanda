@@ -1,6 +1,7 @@
 // frontend/src/comment.js
 import { api } from './api.js';
 import { showNotification } from './helpers.js';
+import { BACKEND_PORT } from './config.js';
 import {
     create_user_name_element,
     get_time_since
@@ -47,44 +48,101 @@ export async function load_comments(threadId, isLocked, callbacks) {
 function create_comment_element(threadId, comment, indentLevel = 0, isLocked = false, callbacks) {
     const commentDiv = document.createElement('div');
     commentDiv.className = 'comment';
-    commentDiv.style.marginLeft = `${indentLevel * 20}px`;
+    commentDiv.style.marginBottom = '15px';
+    commentDiv.style.marginLeft = `${indentLevel * 35}px`;
+    if (indentLevel > 0) {
+        commentDiv.style.borderLeft = '2px solid #eee';
+        commentDiv.style.paddingLeft = '10px';
+    }
+
+    const authorDiv = document.createElement('div');
+    authorDiv.style.display = 'flex';
+    authorDiv.style.alignItems = 'center';
+    authorDiv.style.marginBottom = '8px';
+    authorDiv.style.cursor = 'pointer';
+
+    // image
+    const avatarImg = document.createElement('img');
+    avatarImg.style.width = '30px';
+    avatarImg.style.height = '30px';
+    avatarImg.style.borderRadius = '50%';
+    avatarImg.style.marginRight = '10px';
+    avatarImg.style.objectFit = 'cover';
+    avatarImg.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><circle cx="15" cy="15" r="15" fill="%23e0e0e0"/></svg>';
+
+    // name
+    const authorName = document.createElement('strong');
+    authorName.textContent = 'Loading...';
+    authorName.style.marginRight = '10px';
+
+    // time
+    const timeSinceComment = document.createElement('span');
+    timeSinceComment.className = 'time-since-comment';
+    timeSinceComment.style.color = '#888';
+    timeSinceComment.style.fontSize = '0.85em';
+    timeSinceComment.textContent = get_time_since(comment.createdAt);
+
+    authorDiv.appendChild(avatarImg);
+    authorDiv.appendChild(authorName);
+    authorDiv.appendChild(timeSinceComment);
+
+    api.user.get(comment.creatorId)
+        .then(user => {
+            authorName.textContent = user.name && user.name.trim() !== '' ? user.name : `User ${user.id}`;
+
+            if (user.image && user.image.trim() !== '') {
+                const isBackendStorage = user.image.startsWith('/storage');
+                const backendBaseUrl = `http://localhost:${BACKEND_PORT}`;
+                avatarImg.src = isBackendStorage ? `${backendBaseUrl}${user.image}` : user.image;
+            }
+            authorDiv.onclick = () => {
+                if (callbacks.onProfile) callbacks.onProfile(user.id);
+            };
+        })
+        .catch(error => {
+            console.error('Failed to fetch comment author details:', error);
+            authorName.textContent = 'Unknown User';
+        });
+
+    commentDiv.appendChild(authorDiv);
+
 
     const commentText = document.createElement('p');
     commentText.textContent = comment.content;
+    commentText.style.margin = '0 0 10px 40px';
     commentDiv.appendChild(commentText);
 
-    const timeSinceComment = document.createElement('span');
-    timeSinceComment.className = 'time-since-comment';
-    timeSinceComment.textContent = get_time_since(comment.createdAt);
-    commentDiv.appendChild(timeSinceComment);
+    const actionDiv = document.createElement('div');
+    actionDiv.style.marginLeft = '40px';
 
-    const userNameElement = create_user_name_element(comment.creatorId, callbacks.onProfile);
-    commentDiv.appendChild(userNameElement);
-
+    // Reply
     if (!isLocked) {
         const replyButton = document.createElement('button');
         replyButton.textContent = 'Reply';
         replyButton.onclick = () => render_reply_modal(commentDiv, threadId, comment.id, indentLevel + 1, callbacks);
-        commentDiv.appendChild(replyButton);
+        actionDiv.appendChild(replyButton);
     }
 
     const userId = parseInt(localStorage.getItem('userId'));
     const userRole = localStorage.getItem('userRole');
 
+    // Edit
     if (comment.creatorId === userId && !isLocked) {
         const editButton = document.createElement('button');
         editButton.textContent = 'Edit';
         editButton.onclick = () => render_edit_comment_modal(commentDiv, comment);
-        commentDiv.appendChild(editButton);
+        actionDiv.appendChild(editButton);
     }
 
+    // Delete
     if (userRole === 'admin' || (comment.creatorId === userId && !isLocked)) {
         const deleteButton = document.createElement('button');
         deleteButton.textContent = 'Delete';
         deleteButton.onclick = () => handle_comment_delete(comment.id, commentDiv);
-        commentDiv.appendChild(deleteButton);
+        actionDiv.appendChild(deleteButton);
     }
 
+    // Like 
     const likeButton = document.createElement('button');
     likeButton.textContent = comment.likes.includes(userId) ? 'Unlike' : 'Like';
     likeButton.disabled = isLocked;
@@ -93,12 +151,15 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
         likeButton.style.cursor = 'not-allowed';
     }
     likeButton.onclick = () => handle_comment_like(threadId, comment.id, !comment.likes.includes(userId), callbacks);
-    commentDiv.appendChild(likeButton);
+    actionDiv.appendChild(likeButton);
 
     const likesElement = document.createElement('span');
     likesElement.className = 'comment-likes';
     likesElement.textContent = `Likes: ${comment.likes.length}`;
-    commentDiv.appendChild(likesElement);
+    likesElement.style.marginLeft = '10px';
+    actionDiv.appendChild(likesElement);
+
+    commentDiv.appendChild(actionDiv);
 
     return commentDiv;
 }

@@ -10,6 +10,7 @@ export async function render_profile(userId, callbacks) {
         const user = await api.user.get(userId);
         display_user_profile(user, callbacks);
         load_user_threads(userId, callbacks);
+        load_watched_threads(user, callbacks);
     } catch (error) {
         console.error('Failed to fetch user profile', error);
         showNotification('Failed to fetch user profile: ' + error.message, 'error');
@@ -230,5 +231,62 @@ async function handle_update_admin_status(userId, callbacks) {
     } catch (error) {
         console.error('Failed to update user role', error);
         showNotification('Failed to update user role: ' + error.message, 'error');
+    }
+}
+
+async function load_watched_threads(user, callbacks) {
+    try {
+        const main = document.getElementById('main');
+        const watchesDiv = document.createElement('div');
+        watchesDiv.className = 'threads-box';
+        watchesDiv.style.marginTop = '20px';
+
+        const heading = document.createElement('h3');
+        const watchedCount = user.threadsWatching ? user.threadsWatching.length : 0;
+        heading.textContent = `${watchedCount} Watched Threads`;
+        watchesDiv.appendChild(heading);
+
+        if (watchedCount > 0) {
+            const threadDetailPromises = user.threadsWatching.map(threadId =>
+                api.thread.get(threadId).catch(() => null)
+            );
+
+            const allThreads = await Promise.all(threadDetailPromises);
+            const watchedThreads = allThreads.filter(thread => thread !== null);
+
+            watchedThreads.forEach(thread => {
+                const threadElement = document.createElement('div');
+                threadElement.className = 'thread-box';
+                threadElement.style.cursor = 'pointer';
+
+                const threadTitle = document.createElement('h4');
+                threadTitle.textContent = thread.title;
+
+                const threadContent = document.createElement('p');
+                threadContent.textContent = thread.content;
+
+                const threadInfo = document.createElement('p');
+                threadInfo.textContent = `Likes: ${thread.likes.length} | Watches: ${thread.watchees ? thread.watchees.length : 0}`;
+
+                threadElement.appendChild(threadTitle);
+                threadElement.appendChild(threadContent);
+                threadElement.appendChild(threadInfo);
+
+                threadElement.addEventListener('click', () => {
+                    if (callbacks.onThreadOpen) callbacks.onThreadOpen(thread);
+                });
+
+                watchesDiv.appendChild(threadElement);
+            });
+        } else {
+            const noData = document.createElement('p');
+            noData.textContent = 'No watched threads found.';
+            watchesDiv.appendChild(noData);
+        }
+
+        main.appendChild(watchesDiv);
+    } catch (error) {
+        console.error('Failed to load watched threads', error);
+        showNotification('Failed to load watched threads: ' + error.message, 'error');
     }
 }
