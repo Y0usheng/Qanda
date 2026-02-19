@@ -444,8 +444,12 @@ export const userUpdate = (authUserId, email, password, name, image) => dataLock
       users[authUserId].image = imagePath;
     }
   }
-  if (email && getUserIdFromEmail(email) !== undefined) {
-    throw new InputError(`Email address ${email} already taken`);
-  } else if (email) { users[authUserId].email = email; }
+  if (email) {
+    const existingId = getUserIdFromEmail(email);
+    if (existingId !== undefined && parseInt(existingId) !== parseInt(authUserId)) {
+      throw new InputError(`Email address ${email} already taken`);
+    }
+    users[authUserId].email = email;
+  }
   resolve();
 });

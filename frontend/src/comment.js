@@ -70,12 +70,15 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
 
     const userId = parseInt(localStorage.getItem('userId'));
     const userRole = localStorage.getItem('userRole');
-    if (comment.creatorId === userId || userRole === 'admin') {
+
+    if (comment.creatorId === userId && !isLocked) {
         const editButton = document.createElement('button');
         editButton.textContent = 'Edit';
         editButton.onclick = () => render_edit_comment_modal(commentDiv, comment);
         commentDiv.appendChild(editButton);
+    }
 
+    if (userRole === 'admin' || (comment.creatorId === userId && !isLocked)) {
         const deleteButton = document.createElement('button');
         deleteButton.textContent = 'Delete';
         deleteButton.onclick = () => handle_comment_delete(comment.id, commentDiv);
@@ -84,6 +87,11 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
 
     const likeButton = document.createElement('button');
     likeButton.textContent = comment.likes.includes(userId) ? 'Unlike' : 'Like';
+    likeButton.disabled = isLocked;
+    if (isLocked) {
+        likeButton.style.opacity = '0.6';
+        likeButton.style.cursor = 'not-allowed';
+    }
     likeButton.onclick = () => handle_comment_like(threadId, comment.id, !comment.likes.includes(userId), callbacks);
     commentDiv.appendChild(likeButton);
 
@@ -218,10 +226,10 @@ async function handle_comment_delete(commentId, commentDiv) {
 }
 
 // ------------ Liking a comment ------------ 
-async function handle_comment_like(threadId, commentId, isLike) {
+async function handle_comment_like(threadId, commentId, isLike, callbacks) {
     try {
         await api.comment.like(commentId, isLike);
-        if (callbackss.onRefresh) callbackss.onRefresh(threadId);
+        if (callbacks.onRefresh) callbacks.onRefresh(threadId);
     } catch (error) {
         console.error(`Failed to ${isLike ? 'like' : 'unlike'} comment`, error);
         showNotification(`Failed to ${isLike ? 'like' : 'unlike'} comment: ` + error.message, 'error');

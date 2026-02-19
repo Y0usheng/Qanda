@@ -172,7 +172,7 @@ export function render_single_thread(thread, callbacks) {
     const timeElement = document.createElement('p');
     timeElement.style.color = 'gray';
     timeElement.style.fontSize = '0.9em';
-    timeElement.textContent = `Posted: ${get_time_since_comment(thread.createdAt)}`;
+    timeElement.textContent = `Posted: ${get_time_since(thread.createdAt)}`;
     if (thread.updatedAt) {
         timeElement.textContent += ' (Edited)';
     }
@@ -204,7 +204,7 @@ export function render_single_thread(thread, callbacks) {
         editButton.style.backgroundColor = '#ffc107';
         editButton.style.color = 'black';
         editButton.style.marginRight = '10px';
-        editButton.onclick = () => render_edit_thread_screen(thread);
+        editButton.onclick = () => render_edit_thread_screen(thread, callbacks);
         buttonContainer.appendChild(editButton);
 
         const deleteButton = document.createElement('button');
@@ -212,7 +212,7 @@ export function render_single_thread(thread, callbacks) {
         deleteButton.style.backgroundColor = '#dc3545';
         deleteButton.style.color = 'white';
         deleteButton.style.marginRight = '10px';
-        deleteButton.onclick = () => handle_thread_delete(thread.id);
+        deleteButton.onclick = () => handle_thread_delete(thread.id, callbacks);
         buttonContainer.appendChild(deleteButton);
     }
 
@@ -220,18 +220,22 @@ export function render_single_thread(thread, callbacks) {
     likeButton.id = 'likeButton';
     likeButton.disabled = thread.lock;
     likeButton.textContent = thread.likes.includes(parseInt(localStorage.getItem('userId'))) ? 'Unlike' : 'Like';
-    likeButton.onclick = () => handle_thread_like(thread.id, !thread.likes.includes(parseInt(localStorage.getItem('userId'))));
+    if (thread.lock) {
+        likeButton.style.opacity = '0.6';
+        likeButton.style.cursor = 'not-allowed';
+    }
+    likeButton.onclick = () => handle_thread_like(thread.id, !thread.likes.includes(parseInt(localStorage.getItem('userId'))), callbacks);
     buttonContainer.appendChild(likeButton);
 
     const watchButton = document.createElement('button');
     watchButton.id = 'watchButton';
     watchButton.textContent = thread.watchees.includes(parseInt(localStorage.getItem('userId'))) ? 'Unwatch' : 'Watch';
-    watchButton.onclick = () => handle_thread_watch(thread.id, !thread.watchees.includes(parseInt(localStorage.getItem('userId'))));
+    watchButton.onclick = () => handle_thread_watch(thread.id, !thread.watchees.includes(parseInt(localStorage.getItem('userId'))), callbacks);
     buttonContainer.appendChild(watchButton);
 
     const single_thread_back = document.createElement('button');
     single_thread_back.textContent = 'Back';
-    single_thread_back.onclick = render_dashboard;
+    single_thread_back.onclick = callbacks.onBack;
     buttonContainer.appendChild(single_thread_back);
 
     thread_single_detail.appendChild(buttonContainer);
@@ -285,7 +289,7 @@ function render_edit_thread_screen(thread, callbacks) {
     const cancelButton = document.createElement('button');
     cancelButton.type = 'button';
     cancelButton.textContent = 'Cancel';
-    cancelButton.onclick = () => render_single_thread(thread);
+    cancelButton.onclick = () => render_single_thread(thread, callbacks);
     form.appendChild(cancelButton);
 
     main.appendChild(form);
