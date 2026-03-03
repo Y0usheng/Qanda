@@ -1,215 +1,228 @@
-import fs from 'fs';
 import jwt from 'jsonwebtoken';
-import AsyncLock from 'async-lock';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { InputError, AccessError, } from './error.js';
+import mongoose from 'mongoose';
 
-const lock = new AsyncLock();
+import { InputError, AccessError } from './error.js';
+import User from './models/User.js';
+import Thread from './models/Thread.js';
+import Comment from './models/Comment.js';
 
-const JWT_SECRET = 'donthugmeimscared';
-const DATABASE_FILE = './database.json';
+const getJwtSecret = () => process.env.JWT_SECRET || 'donthugmeimscared';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-// define the path: backend/public/storage
-const STORAGE_DIR = path.join(__dirname, '../public/storage');
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(String(id));
 
-// if the storage directory does not exist, create it
-if (!fs.existsSync(STORAGE_DIR)) {
-  fs.mkdirSync(STORAGE_DIR, { recursive: true });
-}
-
-/***************************************************************
-                       State Management
-***************************************************************/
-
-let users = {};
-let threads = {};
-let comments = {};
-
-const update = (users, threads, comments) =>
-  new Promise((resolve, reject) => {
-    lock.acquire('saveData', () => {
-      try {
-        fs.writeFileSync(DATABASE_FILE, JSON.stringify({
-          users,
-          threads,
-          comments,
-        }, null, 2));
-        resolve();
-      } catch {
-        reject(new Error('Writing to database failed'));
-      }
-    });
-  });
-
-export const save = () => update(users, threads, comments);
-export const reset = () => {
-  update({}, {}, 1);
-  users = {};
-  threads = {};
-  comments = {};
+const requireObjectId = (id, label) => {
+  if (!isValidObjectId(id)) {
+    throw new InputError(`Invalid ${label} ${id}`);
+  }
+  return String(id);
 };
 
-try {
-  const data = JSON.parse(fs.readFileSync(DATABASE_FILE));
-  users = data.users;
-  threads = data.threads;
-  comments = data.comments;
-} catch {
-  console.log('WARNING: No database found, create a new one');
-  save();
-}
-
-/***************************************************************
-                        Helper Functions
-***************************************************************/
-
-const newUserId = _ => generateId(Object.keys(users), 99999);
-const newThreadId = _ => generateId(Object.keys(threads));
-const newCommentId = _ => generateId(Object.keys(comments));
-
-const dataLock = callback => new Promise((resolve, reject) => {
-  lock.acquire('dataLock', callback(resolve, reject));
+const mapThread = (thread) => ({
+  id: thread._id.toString(),
+  creatorId: thread.creatorId?.toString(),
+  title: thread.title,
+  isPublic: thread.isPublic,
+  content: thread.content,
+  lock: thread.lock,
+  createdAt: thread.createdAt,
+  likes: (thread.likes || []).map((id) => id.toString()),
+  watchees: (thread.watchees || []).map((id) => id.toString()),
 });
 
-const randNum = max => Math.round(Math.random() * (max - Math.floor(max / 10)) + Math.floor(max / 10));
-const generateId = (currentList, max = 999999) => {
-  let R = randNum(max).toString();
-  while (currentList.includes(R)) {
-    R = randNum(max).toString();
-  }
-  return parseInt(R);
-};
+const mapComment = (comment) => ({
+  id: comment._id.toString(),
+  creatorId: comment.creatorId?.toString(),
+  threadId: comment.threadId?.toString(),
+  parentCommentId: comment.parentCommentId ? comment.parentCommentId.toString() : null,
+  content: comment.content,
+  createdAt: comment.createdAt,
+  likes: (comment.likes || []).map((id) => id.toString()),
+});
+
+const mapUser = (user) => ({
+  id: user._id.toString(),
+  email: user.email,
+  name: user.name,
+  image: user.image,
+  admin: user.admin,
+  threadsWatching: (user.threadsWatching || []).map((id) => id.toString()),
+});
 
 /**
  * @param {string} base64String
- * @returns {string}
+ * @returns {string | null}
  */
 const saveImage = (base64String) => {
-  if (!base64String || !base64String.startsWith('data:image')) {
-    return base64String;
-  }
+  if (!base64String) return null;
+  if (!base64String.startsWith('data:image')) return base64String;
+  return base64String;
+};
 
-  try {
-    const matches = base64String.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      throw new Error('Invalid base64 string');
-    }
+/***************************************************************
+                         State Management
+***************************************************************/
 
-    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
-    const data = matches[2];
+export const save = async () => {};
 
-    const filename = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${ext}`;
-    const filepath = path.join(STORAGE_DIR, filename);
-
-    fs.writeFileSync(filepath, Buffer.from(data, 'base64'));
-
-    return `/storage/${filename}`;
-  } catch (error) {
-    console.error('Save image failed:', error);
-    return null;
-  }
+export const reset = async () => {
+  await Promise.all([
+    User.deleteMany({}),
+    Thread.deleteMany({}),
+    Comment.deleteMany({}),
+  ]);
 };
 
 /***************************************************************
                          Auth Functions
 ***************************************************************/
 
-export const getUserIdFromAuthorization = authorization => {
+export const getUserIdFromAuthorization = (authorization) => {
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    throw new AccessError('Missing or invalid authorization header');
+  }
+
   const token = authorization.replace('Bearer ', '');
   try {
-    const { userId, } = jwt.verify(token, JWT_SECRET);
-    if (!(userId in users)) {
-      throw new AccessError(`Invalid token ${token}`);
-    }
-    return userId.toString();
+    const { userId } = jwt.verify(token, getJwtSecret());
+    return String(userId);
   } catch {
     throw new AccessError(`Invalid token ${token}`);
   }
 };
 
-export const getUserIdFromEmail = email => {
-  return Object.keys(users).find(id => users[id].email === email);
+export const getUserIdFromEmail = async (email) => {
+  const user = await User.findOne({ email: String(email).toLowerCase() }).select('_id').lean();
+  return user ? user._id.toString() : undefined;
 };
 
-export const login = (email, password) => dataLock((resolve, reject) => {
-  const userId = getUserIdFromEmail(email);
-  if (userId !== undefined && users[userId].password === password) {
-    resolve({
-      token: jwt.sign({ userId, }, JWT_SECRET, { algorithm: 'HS256', }),
-      userId: parseInt(userId, 10),
-    });
-  }
-  reject(new InputError(`Invalid email ${email} or password ${password}`));
-});
+export const login = async (email, password) => {
+  const user = await User.findOne({ email: String(email).toLowerCase() });
 
-export const register = (email, password, name) => dataLock((resolve, reject) => {
+  if (!user || user.password !== password) {
+    throw new InputError(`Invalid email ${email} or password ${password}`);
+  }
+
+  const userId = user._id.toString();
+  return {
+    token: jwt.sign({ userId }, getJwtSecret(), { algorithm: 'HS256' }),
+    userId,
+  };
+};
+
+export const register = async (email, password, name) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     throw new InputError(`Email address ${email} is not valid`);
   }
+
   if (password.length < 6) {
     throw new InputError('Password must be at least 6 characters long');
   }
-  if (getUserIdFromEmail(email) !== undefined) {
+
+  const normalizedEmail = String(email).toLowerCase();
+  const existing = await User.findOne({ email: normalizedEmail }).select('_id').lean();
+  if (existing) {
     throw new InputError(`Email address ${email} already registered`);
   }
-  const userId = newUserId();
-  users[userId] = {
-    email,
+
+  const isFirstUser = (await User.estimatedDocumentCount()) === 0;
+
+  const user = await User.create({
+    email: normalizedEmail,
     name,
     password,
     image: null,
-    admin: Object.keys(users).length === 0 ? true : false,
-    threadsWatching: []
-  };
-  resolve({
-    token: jwt.sign({ userId, }, JWT_SECRET, { algorithm: 'HS256', }),
-    userId: parseInt(userId, 10),
+    admin: isFirstUser,
+    threadsWatching: [],
   });
-});
+
+  const userId = user._id.toString();
+
+  return {
+    token: jwt.sign({ userId }, getJwtSecret(), { algorithm: 'HS256' }),
+    userId,
+  };
+};
 
 /***************************************************************
                        Threads Functions
 ***************************************************************/
 
-export const assertValidThread = (threadId) => {
-  if (!(threadId in threads)) {
+export const assertValidThread = async (threadId) => {
+  const id = requireObjectId(threadId, 'thread post ID');
+  const thread = await Thread.findById(id).select('_id').lean();
+  if (!thread) {
     throw new InputError(`Invalid thread post ID ${threadId}`);
   }
 };
 
-export const assertValidComment = (commentId, canBeNull = false) => {
-  if ((canBeNull && commentId === null) || commentId in comments) {
+export const assertValidComment = async (commentId, canBeNull = false) => {
+  if (canBeNull && commentId === null) {
     return;
   }
-  throw new InputError(`Invalid comment ID ${commentId}`);
+
+  const id = requireObjectId(commentId, 'comment ID');
+  const comment = await Comment.findById(id).select('_id').lean();
+  if (!comment) {
+    throw new InputError(`Invalid comment ID ${commentId}`);
+  }
 };
 
-export const assertViewPermissionOfThread = (userId, threadId) => {
-  if (!(threads[threadId].isPublic || users[userId].admin || threads[threadId].creatorId == userId)) {
+export const assertViewPermissionOfThread = async (userId, threadId) => {
+  const uid = requireObjectId(userId, 'user ID');
+  const tid = requireObjectId(threadId, 'thread ID');
+
+  const [user, thread] = await Promise.all([
+    User.findById(uid).select('admin').lean(),
+    Thread.findById(tid).select('isPublic creatorId').lean(),
+  ]);
+
+  if (!user || !thread) {
+    throw new InputError('User or thread not found');
+  }
+
+  if (!(thread.isPublic || user.admin || thread.creatorId.toString() === uid)) {
     throw new AccessError(`Authorised user ${userId} is not the creator of this thread ${threadId}`);
   }
 };
 
-export const assertUnlockedThread = (threadId) => {
-  if (threads[threadId].lock) {
+export const assertUnlockedThread = async (threadId) => {
+  const tid = requireObjectId(threadId, 'thread ID');
+  const thread = await Thread.findById(tid).select('lock').lean();
+
+  if (!thread) {
+    throw new InputError(`Invalid thread ID ${threadId}`);
+  }
+
+  if (thread.lock) {
     throw new InputError(`This thread ${threadId} is locked`);
   }
 };
 
-export const assertEditPermissionOfThread = (userId, threadId) => {
-  if (threads[threadId].creatorId !== parseInt(userId, 10) && !users[userId].admin) {
+export const assertEditPermissionOfThread = async (userId, threadId) => {
+  const uid = requireObjectId(userId, 'user ID');
+  const tid = requireObjectId(threadId, 'thread ID');
+
+  const [user, thread] = await Promise.all([
+    User.findById(uid).select('admin').lean(),
+    Thread.findById(tid).select('creatorId').lean(),
+  ]);
+
+  if (!user || !thread) {
+    throw new InputError('User or thread not found');
+  }
+
+  if (thread.creatorId.toString() !== uid && !user.admin) {
     throw new AccessError(`Authorised user ${userId} is not the creator of this thread ${threadId}`);
   }
 };
 
-export const threadsGet = (authUserId, start, limit = 10, sortBy = 'recent') => dataLock((resolve, reject) => {
+export const threadsGet = async (authUserId, start, limit = 10, sortBy = 'recent') => {
   if (Number.isNaN(start)) {
     throw new InputError(`Invalid start value of ${start}`);
-  } else if (start < 0) {
+  }
+
+  if (start < 0) {
     throw new InputError(`Start value of ${start} cannot be negative`);
   }
 
@@ -217,59 +230,79 @@ export const threadsGet = (authUserId, start, limit = 10, sortBy = 'recent') => 
     limit = 10;
   }
 
-  const allThreads = Object.keys(threads).map(pid => threads[pid]);
+  const uid = requireObjectId(authUserId, 'user ID');
+  const authUser = await User.findById(uid).select('admin').lean();
+  if (!authUser) {
+    throw new AccessError(`Invalid authenticated user ${authUserId}`);
+  }
 
-  const relevantThreads = allThreads.filter(t => t.isPublic || users[authUserId].admin || t.creatorId == authUserId);
+  const filter = authUser.admin
+    ? {}
+    : {
+        $or: [
+          { isPublic: true },
+          { creatorId: uid },
+        ],
+      };
+
+  let threads = await Thread.find(filter).lean();
 
   if (sortBy === 'likes') {
-    relevantThreads.sort((a, b) => Object.keys(b.likes).length - Object.keys(a.likes).length);
+    threads.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
   } else {
-    relevantThreads.sort((a, b) => (a.createdAt < b.createdAt) ? 1 : -1);
+    threads.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
 
-  const nextThreads = relevantThreads.slice(start, start + limit);
+  return threads.slice(start, start + limit).map((thread) => thread._id.toString());
+};
 
-  resolve(nextThreads.map(j => parseInt(j.id)));
-});
+export const threadGet = async (authUserId, threadId) => {
+  const tid = requireObjectId(threadId, 'thread ID');
+  const thread = await Thread.findById(tid).lean();
 
-export const threadGet = (authUserId, threadId) => dataLock((resolve, reject) => {
-  if (!(threadId in threads)) {
+  if (!thread) {
     throw new InputError(`Invalid thread ID ${threadId}`);
   }
-  resolve({
-    ...threads[threadId],
-    likes: Object.keys(threads[threadId].likes).map(x => parseInt(x)),
-    watchees: Object.keys(threads[threadId].watchees).map(x => parseInt(x))
-  })
-});
 
-export const threadNew = (authUserId, title, isPublic, content) => dataLock((resolve, reject) => {
+  return mapThread(thread);
+};
+
+export const threadNew = async (authUserId, title, isPublic, content) => {
   if (title === undefined || title.trim() === '' || content === undefined || content.trim() === '' || isPublic === undefined || ![true, false].includes(isPublic)) {
-    console.log(`Input is: title(${title}), isPublic(${isPublic}), content(${content})`);
     throw new InputError(`Please enter all relevant fields, you entered title(${title}), isPublic(${isPublic}), content(${content})`);
   }
+
   if (content.length > 2000) {
     throw new InputError('Thread content cannot exceed 2000 characters');
   }
+
   if (title.length > 100) {
     throw new InputError('Thread title cannot exceed 100 characters');
   }
-  const newThread = {
-    id: newThreadId(),
-    creatorId: parseInt(authUserId, 10),
+
+  const uid = requireObjectId(authUserId, 'user ID');
+
+  const thread = await Thread.create({
+    creatorId: uid,
     title,
     isPublic,
     content,
     lock: false,
-    createdAt: new Date().toISOString(),
-    likes: {},
-    watchees: {},
-  };
-  threads[newThread.id] = newThread;
-  resolve(newThread.id)
-});
+    likes: [],
+    watchees: [],
+  });
 
-export const threadUpdate = (authUserId, threadId, title, isPublic, content, lock) => dataLock((resolve, reject) => {
+  return thread._id.toString();
+};
+
+export const threadUpdate = async (authUserId, threadId, title, isPublic, content, lock) => {
+  const tid = requireObjectId(threadId, 'thread ID');
+  const thread = await Thread.findById(tid);
+
+  if (!thread) {
+    throw new InputError(`Invalid thread ID ${threadId}`);
+  }
+
   if (title !== undefined) {
     if (title.trim() === '') {
       throw new InputError('Thread title cannot be empty');
@@ -277,9 +310,8 @@ export const threadUpdate = (authUserId, threadId, title, isPublic, content, loc
     if (title.length > 100) {
       throw new InputError('Thread title cannot exceed 100 characters');
     }
-    threads[threadId].title = title;
+    thread.title = title;
   }
-
 
   if (content !== undefined) {
     if (content.trim() === '') {
@@ -288,168 +320,231 @@ export const threadUpdate = (authUserId, threadId, title, isPublic, content, loc
     if (content.length > 2000) {
       throw new InputError('Thread content cannot exceed 2000 characters');
     }
-    threads[threadId].content = content;
+    thread.content = content;
   }
 
-  if (isPublic !== undefined) threads[threadId].isPublic = isPublic;
-  if (lock !== undefined) threads[threadId].lock = lock;
-  resolve(threads[threadId]);
-});
+  if (isPublic !== undefined) {
+    thread.isPublic = isPublic;
+  }
 
-export const threadLikeToggle = (authUserId, threadId, turnon) => dataLock((resolve, reject) => {
+  if (lock !== undefined) {
+    thread.lock = lock;
+  }
+
+  await thread.save();
+  return mapThread(thread);
+};
+
+export const threadLikeToggle = async (authUserId, threadId, turnon) => {
+  const uid = requireObjectId(authUserId, 'user ID');
+  const tid = requireObjectId(threadId, 'thread ID');
+
   if (turnon) {
-    threads[threadId].likes[authUserId] = true;
+    await Thread.findByIdAndUpdate(tid, { $addToSet: { likes: uid } });
   } else {
-    if (Object.keys(threads[threadId].likes).includes(authUserId)) {
-      delete threads[threadId].likes[authUserId];
-    }
+    await Thread.findByIdAndUpdate(tid, { $pull: { likes: uid } });
   }
-  resolve(threads[threadId]);
-});
 
-export const threadDelete = (authUserId, threadId) => dataLock((resolve, reject) => {
-  delete threads[threadId];
-  resolve();
-});
+  return Thread.findById(tid).lean();
+};
 
-export const threadWatchToggle = (authUserId, threadId, turnon) => dataLock((resolve, reject) => {
+export const threadDelete = async (authUserId, threadId) => {
+  const tid = requireObjectId(threadId, 'thread ID');
+
+  await Promise.all([
+    Thread.findByIdAndDelete(tid),
+    Comment.deleteMany({ threadId: tid }),
+    User.updateMany({}, { $pull: { threadsWatching: tid } }),
+  ]);
+};
+
+export const threadWatchToggle = async (authUserId, threadId, turnon) => {
+  const uid = requireObjectId(authUserId, 'user ID');
+  const tid = requireObjectId(threadId, 'thread ID');
+
   if (turnon) {
-    threads[threadId].watchees[authUserId] = true;
-    if (!users[authUserId].threadsWatching.includes(threadId)) {
-      users[authUserId].threadsWatching.push(threadId);
-    }
+    await Promise.all([
+      Thread.findByIdAndUpdate(tid, { $addToSet: { watchees: uid } }),
+      User.findByIdAndUpdate(uid, { $addToSet: { threadsWatching: tid } }),
+    ]);
   } else {
-    if (Object.keys(threads[threadId].watchees).includes(authUserId)) {
-      delete threads[threadId].watchees[authUserId];
-    }
-    if (users[authUserId].threadsWatching.includes(threadId)) {
-      users[authUserId].threadsWatching.splice(users[authUserId].threadsWatching.indexOf(threadId), 1);
-    }
+    await Promise.all([
+      Thread.findByIdAndUpdate(tid, { $pull: { watchees: uid } }),
+      User.findByIdAndUpdate(uid, { $pull: { threadsWatching: tid } }),
+    ]);
   }
-  resolve(threads[threadId]);
-});
+
+  return Thread.findById(tid).lean();
+};
 
 /***************************************************************
                        Comments Functions
 ***************************************************************/
 
-export const assertEditPermissionOfComment = (userId, commentId) => {
-  if (comments[commentId].creatorId !== parseInt(userId, 10) && !users[userId].admin) {
+export const assertEditPermissionOfComment = async (userId, commentId) => {
+  const uid = requireObjectId(userId, 'user ID');
+  const cid = requireObjectId(commentId, 'comment ID');
+
+  const [user, comment] = await Promise.all([
+    User.findById(uid).select('admin').lean(),
+    Comment.findById(cid).select('creatorId').lean(),
+  ]);
+
+  if (!user || !comment) {
+    throw new InputError('User or comment not found');
+  }
+
+  if (comment.creatorId.toString() !== uid && !user.admin) {
     throw new AccessError(`Authorised user ${userId} is not permitted to edit comment ${commentId}`);
   }
 };
 
-export const assertLikePermissionOfComment = (userId, commentId) => {
-  assertViewPermissionOfThread(userId, comments[commentId].threadId);
+export const assertLikePermissionOfComment = async (userId, commentId) => {
+  const cid = requireObjectId(commentId, 'comment ID');
+  const comment = await Comment.findById(cid).select('threadId').lean();
+
+  if (!comment) {
+    throw new InputError(`Invalid comment ID ${commentId}`);
+  }
+
+  await assertViewPermissionOfThread(userId, comment.threadId.toString());
 };
 
-export const commentsGet = (authUserId, threadId) => dataLock((resolve, reject) => {
-  const commentIdKeys = Object.keys(comments);
-  const mappedComments = commentIdKeys.map(id => ({
-    ...comments[id],
-    id: parseInt(comments[id].id),
-    threadId: parseInt(comments[id].threadId),
-    likes: Object.keys(comments[id].likes).map(i => parseInt(i)),
-  }));
-  const filteredComments = mappedComments.filter(c => c.threadId === threadId);
-  resolve(filteredComments);
-});
+export const commentsGet = async (authUserId, threadId) => {
+  const tid = requireObjectId(threadId, 'thread ID');
 
-export const commentNew = (authUserId, threadId, parentCommentId, content) => dataLock((resolve, reject) => {
+  const comments = await Comment.find({ threadId: tid }).sort({ createdAt: 1 }).lean();
+  return comments.map(mapComment);
+};
+
+export const commentNew = async (authUserId, threadId, parentCommentId, content) => {
   if (threadId === undefined || parentCommentId === undefined || content === undefined) {
     throw new InputError(`Please enter all relevant fields, you entered threadId(${threadId}), parentCommentId(${parentCommentId}), content(${content})`);
   }
-  const newComment = {
-    id: newCommentId(),
-    creatorId: parseInt(authUserId, 10),
-    threadId: threadId,
-    parentCommentId: parentCommentId,
+
+  const uid = requireObjectId(authUserId, 'user ID');
+  const tid = requireObjectId(threadId, 'thread ID');
+
+  const payload = {
+    creatorId: uid,
+    threadId: tid,
+    parentCommentId: parentCommentId === null ? null : requireObjectId(parentCommentId, 'parent comment ID'),
     content,
-    createdAt: new Date().toISOString(),
-    likes: {},
+    likes: [],
   };
-  comments[newComment.id] = newComment;
-  resolve(newComment.id)
-});
 
-export const commentUpdate = (authUserId, commentId, content) => dataLock((resolve, reject) => {
-  if (content) comments[commentId].content = content;
-  resolve(comments[commentId]);
-});
+  const comment = await Comment.create(payload);
+  return comment._id.toString();
+};
 
-export const commentLikeToggle = (authUserId, commentId, turnon) => dataLock((resolve, reject) => {
-  if (turnon) {
-    comments[commentId].likes[authUserId] = true;
-  } else {
-    if (Object.keys(comments[commentId].likes).includes(authUserId)) {
-      delete comments[commentId].likes[authUserId];
-    }
+export const commentUpdate = async (authUserId, commentId, content) => {
+  const cid = requireObjectId(commentId, 'comment ID');
+  const comment = await Comment.findById(cid);
+
+  if (!comment) {
+    throw new InputError(`Invalid comment ID ${commentId}`);
   }
-  resolve(comments[commentId]);
-});
 
-export const commentDelete = (authUserId, commentId) => dataLock((resolve, reject) => {
-  delete comments[commentId];
-  resolve();
-});
+  if (content) {
+    comment.content = content;
+  }
+
+  await comment.save();
+  return mapComment(comment);
+};
+
+export const commentLikeToggle = async (authUserId, commentId, turnon) => {
+  const uid = requireObjectId(authUserId, 'user ID');
+  const cid = requireObjectId(commentId, 'comment ID');
+
+  if (turnon) {
+    await Comment.findByIdAndUpdate(cid, { $addToSet: { likes: uid } });
+  } else {
+    await Comment.findByIdAndUpdate(cid, { $pull: { likes: uid } });
+  }
+
+  return Comment.findById(cid).lean();
+};
+
+export const commentDelete = async (authUserId, commentId) => {
+  const cid = requireObjectId(commentId, 'comment ID');
+  await Comment.findByIdAndDelete(cid);
+};
 
 /***************************************************************
                          User Functions
 ***************************************************************/
 
-export const assertValidUserId = (userId) => dataLock((resolve, reject) => {
-  if (!(userId in users)) {
+export const assertValidUserId = async (userId) => {
+  const uid = requireObjectId(userId, 'user ID');
+  const user = await User.findById(uid).select('_id').lean();
+  if (!user) {
     throw new InputError(`Invalid user ID ${userId}`);
   }
-  resolve();
-});
+};
 
-export const assertAdminUserId = (userId) => dataLock((resolve, reject) => {
-  if (!users[userId].admin) {
+export const assertAdminUserId = async (userId) => {
+  const uid = requireObjectId(userId, 'admin user ID');
+  const user = await User.findById(uid).select('admin').lean();
+
+  if (!user || !user.admin) {
     throw new InputError(`Invalid admin user ID ${userId}`);
   }
-  resolve();
-});
+};
 
-export const userGet = (userId) => dataLock((resolve, reject) => {
-  const intid = parseInt(userId, 10);
-  const user = {
-    ...users[userId],
-    password: undefined,
-    id: intid,
-  };
-  resolve(user);
-});
+export const userGet = async (userId) => {
+  const uid = requireObjectId(userId, 'user ID');
+  const user = await User.findById(uid).lean();
 
-export const userAdminChange = (authUserId, userId, turnon) => dataLock((resolve, reject) => {
+  if (!user) {
+    throw new InputError(`Invalid user ID ${userId}`);
+  }
+
+  return mapUser(user);
+};
+
+export const userAdminChange = async (authUserId, userId, turnon) => {
   if (turnon === undefined) {
-    reject(new InputError('turnon property is missing'));
-    return;
+    throw new InputError('turnon property is missing');
   }
-  const user = users[userId];
-  if (turnon) {
-    user.admin = true;
-  } else {
-    user.admin = false;
-  }
-  resolve();
-});
 
-export const userUpdate = (authUserId, email, password, name, image) => dataLock((resolve, reject) => {
-  if (name) { users[authUserId].name = name; }
-  if (password) { users[authUserId].password = password; }
+  const uid = requireObjectId(userId, 'user ID');
+  await User.findByIdAndUpdate(uid, { admin: !!turnon });
+};
+
+export const userUpdate = async (authUserId, email, password, name, image) => {
+  const uid = requireObjectId(authUserId, 'user ID');
+  const user = await User.findById(uid);
+
+  if (!user) {
+    throw new InputError(`Invalid user ID ${authUserId}`);
+  }
+
+  if (name) {
+    user.name = name;
+  }
+
+  if (password) {
+    user.password = password;
+  }
+
   if (image) {
     const imagePath = saveImage(image);
     if (imagePath) {
-      users[authUserId].image = imagePath;
+      user.image = imagePath;
     }
   }
+
   if (email) {
-    const existingId = getUserIdFromEmail(email);
-    if (existingId !== undefined && parseInt(existingId) !== parseInt(authUserId)) {
+    const normalizedEmail = String(email).toLowerCase();
+    const existing = await User.findOne({ email: normalizedEmail }).select('_id').lean();
+
+    if (existing && existing._id.toString() !== uid) {
       throw new InputError(`Email address ${email} already taken`);
     }
-    users[authUserId].email = email;
+
+    user.email = normalizedEmail;
   }
-  resolve();
-});
+
+  await user.save();
+};

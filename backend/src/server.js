@@ -3,6 +3,8 @@ import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -41,6 +43,17 @@ import {
   userAdminChange,
   userUpdate,
 } from './service.js';
+
+dotenv.config();
+
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => {
+  console.log('Connected to MongoDB Atlas!');
+}).catch((err) => {
+  console.error('MongoDB connection error:', err);
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -160,7 +173,7 @@ app.put('/thread/watch', catchErrors(authed(async (req, res, authUserId) => {
 
 app.get('/comments', catchErrors(authed(async (req, res, authUserId) => {
   const { threadId, } = req.query;
-  return res.json(await commentsGet(authUserId, parseInt(threadId)));
+  return res.json(await commentsGet(authUserId, threadId));
 })));
 
 app.post('/comment', catchErrors(authed(async (req, res, authUserId) => {
