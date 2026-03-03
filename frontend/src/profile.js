@@ -110,7 +110,7 @@ async function load_user_threads(userId, callbacks) {
         const threadDetailPromises = threadIds.map(threadId => api.thread.get(threadId));
         const allThreads = await Promise.all(threadDetailPromises);
 
-        const userThreads = allThreads.filter(thread => thread.creatorId === parseInt(userId));
+        const userThreads = allThreads.filter(thread => String(thread.creatorId) === String(userId));
 
         const main = document.getElementById('main');
         const threadsDiv = document.createElement('div');
