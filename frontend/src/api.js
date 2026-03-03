@@ -1,6 +1,4 @@
-import { BACKEND_PORT } from './config.js';
-
-const BASE_URL = `http://localhost:${BACKEND_PORT}`;
+const BASE_URL = 'https://qanda-x9l8.onrender.com';
 
 const request = async (path, options = {}) => {
     const url = `${BASE_URL}${path}`;
