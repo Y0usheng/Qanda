@@ -51,8 +51,7 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
     commentDiv.style.marginBottom = '15px';
     commentDiv.style.marginLeft = `${indentLevel * 35}px`;
     if (indentLevel > 0) {
-        commentDiv.style.borderLeft = '2px solid #eee';
-        commentDiv.style.paddingLeft = '10px';
+        commentDiv.classList.add('nested-comment');
     }
 
     const authorDiv = document.createElement('div');
