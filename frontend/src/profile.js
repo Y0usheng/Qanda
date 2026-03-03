@@ -57,9 +57,9 @@ function display_user_profile(user, callbacks) {
     main.appendChild(profileDiv);
 
     const current_userRole = localStorage.getItem('userRole');
-    const current_userId = parseInt(localStorage.getItem('userId'));
+    const current_userId = localStorage.getItem('userId');
 
-    if (current_userRole === 'admin' && current_userId !== user.id) {
+    if (current_userRole === 'admin' && current_userId !== String(user.id)) {
         const adminSelectDiv = document.createElement('div');
         const adminLabel = document.createElement('label');
         adminLabel.innerText = 'User Role: ';
@@ -89,7 +89,7 @@ function display_user_profile(user, callbacks) {
         profileDiv.appendChild(updateButton);
     }
 
-    if (parseInt(localStorage.getItem('userId')) === user.id) {
+    if (localStorage.getItem('userId') === String(user.id)) {
         const updateButton = document.createElement('button');
         updateButton.textContent = 'Update Profile';
         updateButton.onclick = () => render_update_profile_form(callbacks);

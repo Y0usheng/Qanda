@@ -269,21 +269,23 @@ export function render_single_thread(thread, callbacks) {
         buttonContainer.appendChild(deleteButton);
     }
 
+    const userIdStr = localStorage.getItem('userId');
+
     const likeButton = document.createElement('button');
     likeButton.id = 'likeButton';
     likeButton.disabled = thread.lock;
-    likeButton.textContent = thread.likes.includes(parseInt(localStorage.getItem('userId'))) ? 'Unlike' : 'Like';
+    likeButton.textContent = thread.likes.includes(userIdStr) ? 'Unlike' : 'Like';
     if (thread.lock) {
         likeButton.style.opacity = '0.6';
         likeButton.style.cursor = 'not-allowed';
     }
-    likeButton.onclick = () => handle_thread_like(thread.id, !thread.likes.includes(parseInt(localStorage.getItem('userId'))), callbacks);
+    likeButton.onclick = () => handle_thread_like(thread.id, !thread.likes.includes(userIdStr), callbacks);
     buttonContainer.appendChild(likeButton);
 
     const watchButton = document.createElement('button');
     watchButton.id = 'watchButton';
-    watchButton.textContent = thread.watchees.includes(parseInt(localStorage.getItem('userId'))) ? 'Unwatch' : 'Watch';
-    watchButton.onclick = () => handle_thread_watch(thread.id, !thread.watchees.includes(parseInt(localStorage.getItem('userId'))), callbacks);
+    watchButton.textContent = thread.watchees.includes(userIdStr) ? 'Unwatch' : 'Watch';
+    watchButton.onclick = () => handle_thread_watch(thread.id, !thread.watchees.includes(userIdStr), callbacks);
     buttonContainer.appendChild(watchButton);
 
     const single_thread_back = document.createElement('button');

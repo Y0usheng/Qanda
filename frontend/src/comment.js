@@ -122,7 +122,7 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
         actionDiv.appendChild(replyButton);
     }
 
-    const userId = parseInt(localStorage.getItem('userId'));
+    const userId = localStorage.getItem('userId');
     const userRole = localStorage.getItem('userRole');
 
     // Edit
