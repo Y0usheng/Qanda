@@ -1,7 +1,7 @@
 // frontend/src/comment.js
 import { api } from './api.js';
 import { showNotification } from './helpers.js';
-import { BACKEND_PORT } from './config.js';
+import { BACKEND_BASE_URL } from './config.js';
 import {
     create_user_name_element,
     get_time_since
@@ -91,8 +91,7 @@ function create_comment_element(threadId, comment, indentLevel = 0, isLocked = f
 
             if (user.image && user.image.trim() !== '') {
                 const isBackendStorage = user.image.startsWith('/storage');
-                const backendBaseUrl = `http://localhost:${BACKEND_PORT}`;
-                avatarImg.src = isBackendStorage ? `${backendBaseUrl}${user.image}` : user.image;
+                avatarImg.src = isBackendStorage ? `${BACKEND_BASE_URL}${user.image}` : user.image;
             }
             authorDiv.onclick = () => {
                 if (callbacks.onProfile) callbacks.onProfile(user.id);

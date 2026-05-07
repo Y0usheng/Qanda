@@ -1,7 +1,7 @@
 // frontend/src/thread.js
 import { api } from './api.js';
 import { showNotification } from './helpers.js';
-import { BACKEND_PORT } from './config.js';
+import { BACKEND_BASE_URL } from './config.js';
 import {
     clear_element,
     create_div,
@@ -198,8 +198,7 @@ export function render_single_thread(thread, callbacks) {
 
             if (user.image && user.image.trim() !== '') {
                 const isBackendStorage = user.image.startsWith('/storage');
-                const backendBaseUrl = `http://localhost:${BACKEND_PORT}`;
-                avatarImg.src = isBackendStorage ? `${backendBaseUrl}${user.image}` : user.image;
+                avatarImg.src = isBackendStorage ? `${BACKEND_BASE_URL}${user.image}` : user.image;
             }
 
             authorDiv.onclick = () => {

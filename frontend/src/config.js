@@ -1,1 +1,1 @@
-export const BACKEND_PORT = 5005
+export const BACKEND_BASE_URL = 'https://qanda-x9l8.onrender.com';

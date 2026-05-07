@@ -27,10 +27,11 @@ Then open `http://localhost:3000`.
 Edit [src/config.js](src/config.js) to point at your backend:
 
 ```js
-export const BACKEND_PORT = 5005; // or whatever port your backend is on
+export const BACKEND_BASE_URL = 'https://qanda-x9l8.onrender.com';
+// or for local dev: 'http://localhost:5005'
 ```
 
-The frontend assumes the backend runs on `http://localhost:<BACKEND_PORT>`.
+All HTTP calls and image URLs (`/storage/...`) are resolved against `BACKEND_BASE_URL`.
 
 ## Project Layout
 
@@ -41,7 +42,7 @@ frontend/
 │   └── global.css       # Global styles
 └── src/
     ├── main.js          # Entry point + dashboard rendering
-    ├── config.js        # BACKEND_PORT
+    ├── config.js        # BACKEND_BASE_URL
     ├── api.js           # Wrapper around fetch for all backend endpoints
     ├── auth.js          # Login / register / logout screens
     ├── thread.js        # Thread list + create / view / edit / delete

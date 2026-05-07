@@ -1,6 +1,6 @@
 // frontend/src/profile.js
 import { api } from './api.js';
-import { BACKEND_PORT } from './config.js';
+import { BACKEND_BASE_URL } from './config.js';
 import { fileToDataUrl, showNotification } from './helpers.js';
 import { clear_element, create_div, get_button } from './utils.js';
 
@@ -28,8 +28,7 @@ function display_user_profile(user, callbacks) {
         const profileImage = document.createElement('img');
         profileImage.className = 'profile-image';
         const isUrl = user.image.startsWith('/storage');
-        const backendUrl = `http://localhost:${BACKEND_PORT}`;
-        profileImage.src = isUrl ? `${backendUrl}${user.image}` : user.image;
+        profileImage.src = isUrl ? `${BACKEND_BASE_URL}${user.image}` : user.image;
         profileImage.alt = `${user.name || `User ${user.id}`}'s Profile Picture`;
         profileImage.style.width = '150px';
         profileImage.style.height = '150px';
